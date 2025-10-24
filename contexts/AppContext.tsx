@@ -250,6 +250,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // Effect to dynamically set the favicon
+    useEffect(() => {
+        if (settings.logo) {
+            let favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+            if (favicon) {
+                favicon.href = settings.logo;
+            } else {
+                favicon = document.createElement('link');
+                favicon.rel = 'icon';
+                favicon.href = settings.logo;
+                document.head.appendChild(favicon);
+            }
+        }
+    }, [settings.logo]);
+
     const postData = async (sheet: string, data: object) => {
         const response = await fetch(SCRIPT_URL, {
             method: 'POST',
