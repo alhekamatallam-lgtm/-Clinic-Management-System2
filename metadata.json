@@ -1,0 +1,7 @@
+{
+  "name": "Alrajhi_Clinic_v3",
+  "description": "A comprehensive clinic management system with role-based dashboards for receptionists, doctors, and managers. It allows for patient management, visit tracking, diagnosis recording, user and clinic administration, and financial reporting.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
