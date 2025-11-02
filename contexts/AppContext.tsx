@@ -85,7 +85,7 @@ interface AppContextType {
     addDisbursement: (disbursement: Omit<Disbursement, 'disbursement_id' | 'status'>) => Promise<void>;
     updateDisbursementStatus: (disbursementId: number, status: DisbursementStatus) => Promise<void>;
     addPaymentVoucher: (voucher: Omit<PaymentVoucher, 'voucher_id' | 'status'>) => Promise<void>;
-    updatePaymentVoucherStatus: (voucherId: number, status: PaymentVoucherStatus) => Promise<void>;
+    updatePaymentVoucherStatus: (voucher: PaymentVoucher, status: PaymentVoucherStatus) => Promise<void>;
     updateClinic: (clinicId: number, clinicData: Partial<Omit<Clinic, 'clinic_id'>>) => Promise<void>;
     deleteClinic: (clinicId: number) => Promise<void>;
     updateVisitStatus: (visitId: number, status: VisitStatus) => void; 
@@ -741,28 +741,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
     };
 
-    const updatePaymentVoucherStatus = async (voucherId: number, status: PaymentVoucherStatus) => {
-        const originalVoucher = paymentVouchers.find(v => v.voucher_id === voucherId);
-        if (!originalVoucher) {
-            showNotification('لم يتم العثور على سند الصرف', 'error');
+    const updatePaymentVoucherStatus = async (voucherToUpdate: PaymentVoucher, status: PaymentVoucherStatus) => {
+        if (!voucherToUpdate) {
+            showNotification('بيانات سند الصرف غير متوفرة', 'error');
             return;
         }
         try {
+            // Construct payload with Arabic keys.
+            // OMIT "رقم السند" because its value is 0 and unreliable for updates.
+            // We rely on "رقم الطلب" to uniquely identify the row for update.
+            // We send all other fields to prevent the backend from clearing them.
             const rowData = {
-                "رقم السند": originalVoucher.voucher_id,
-                "رقم الطلب": originalVoucher.request_id,
-                "التاريخ": originalVoucher.date,
-                "نوع الصرف": originalVoucher.disbursement_type,
-                "المبلغ": originalVoucher.amount,
-                "المستفيد": originalVoucher.beneficiary,
-                "مقابل / الغرض من الصرف": originalVoucher.purpose,
-                "طريقة الصرف": originalVoucher.payment_method,
+                "رقم الطلب": voucherToUpdate.request_id,
+                "التاريخ": voucherToUpdate.date,
+                "نوع الصرف": voucherToUpdate.disbursement_type,
+                "المبلغ": voucherToUpdate.amount,
+                "المستفيد": voucherToUpdate.beneficiary,
+                "مقابل / الغرض من الصرف": voucherToUpdate.purpose,
+                "طريقة الصرف": voucherToUpdate.payment_method,
                 "الحالة": status,
             };
             
             const payload = {
                 action: 'update',
                 ...rowData,
+                // We must also include 'رقم السند' in the payload, even if it's 0,
+                // so the backend doesn't clear the column. The backend script should
+                // prioritize 'رقم الطلب' for the lookup if 'رقم السند' is 0.
+                "رقم السند": voucherToUpdate.voucher_id,
             };
 
             const result = await postData('Payment Voucher', payload);

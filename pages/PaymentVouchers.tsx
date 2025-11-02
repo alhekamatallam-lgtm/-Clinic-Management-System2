@@ -29,15 +29,15 @@ const PaymentVouchers: React.FC = () => {
         setCurrentPage(pageNumber);
     };
 
-    const handleApproveVoucher = (voucherId: number) => {
+    const handleApproveVoucher = (voucher: PaymentVoucher) => {
         if (window.confirm('هل أنت متأكد من اعتماد سند الصرف هذا؟')) {
-            updatePaymentVoucherStatus(voucherId, PaymentVoucherStatus.Approved);
+            updatePaymentVoucherStatus(voucher, PaymentVoucherStatus.Approved);
         }
     };
 
-    const handleRejectVoucher = (voucherId: number) => {
+    const handleRejectVoucher = (voucher: PaymentVoucher) => {
         if (window.confirm('هل أنت متأكد من رفض سند الصرف هذا؟')) {
-            updatePaymentVoucherStatus(voucherId, PaymentVoucherStatus.Rejected);
+            updatePaymentVoucherStatus(voucher, PaymentVoucherStatus.Rejected);
         }
     };
     
@@ -112,7 +112,7 @@ const PaymentVouchers: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                         {currentVouchers.map(item => (
-                            <tr key={item.voucher_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            <tr key={item.voucher_id + '-' + item.request_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.voucher_id}</td>
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.request_id}</td>
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.date}</td>
@@ -123,10 +123,10 @@ const PaymentVouchers: React.FC = () => {
                                 <td className="p-3 text-sm">
                                     {user?.role === Role.Manager && item.status === PaymentVoucherStatus.Pending && (
                                         <div className="flex items-center gap-2">
-                                            <button onClick={() => handleApproveVoucher(item.voucher_id)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
+                                            <button onClick={() => handleApproveVoucher(item)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
                                                 <CheckBadgeIcon className="h-4 w-4 ml-1" /> اعتماد
                                             </button>
-                                            <button onClick={() => handleRejectVoucher(item.voucher_id)} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center">
+                                            <button onClick={() => handleRejectVoucher(item)} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center">
                                                 <XCircleIcon className="h-4 w-4 ml-1" /> رفض
                                             </button>
                                         </div>

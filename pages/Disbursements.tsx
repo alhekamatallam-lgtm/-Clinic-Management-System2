@@ -124,15 +124,17 @@ const Disbursements: React.FC = () => {
         }
     };
 
-    const handleApproveVoucher = (voucherId: number) => {
+    // FIX: Changed parameter from `voucherId` to `voucher` to pass the entire object.
+    const handleApproveVoucher = (voucher: PaymentVoucher) => {
         if (window.confirm('هل أنت متأكد من اعتماد سند الصرف هذا؟')) {
-            updatePaymentVoucherStatus(voucherId, PaymentVoucherStatus.Approved);
+            updatePaymentVoucherStatus(voucher, PaymentVoucherStatus.Approved);
         }
     };
 
-    const handleRejectVoucher = (voucherId: number) => {
+    // FIX: Changed parameter from `voucherId` to `voucher` to pass the entire object.
+    const handleRejectVoucher = (voucher: PaymentVoucher) => {
         if (window.confirm('هل أنت متأكد من رفض سند الصرف هذا؟')) {
-            updatePaymentVoucherStatus(voucherId, PaymentVoucherStatus.Rejected);
+            updatePaymentVoucherStatus(voucher, PaymentVoucherStatus.Rejected);
         }
     };
     
@@ -263,10 +265,10 @@ const Disbursements: React.FC = () => {
                                         )}
                                          {user?.role === Role.Manager && voucher && voucher.status === PaymentVoucherStatus.Pending && (
                                             <div className="flex items-center gap-2">
-                                                <button onClick={() => handleApproveVoucher(voucher.voucher_id)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
+                                                <button onClick={() => handleApproveVoucher(voucher)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
                                                     <CheckBadgeIcon className="h-4 w-4 ml-1" /> اعتماد
                                                 </button>
-                                                <button onClick={() => handleRejectVoucher(voucher.voucher_id)} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center">
+                                                <button onClick={() => handleRejectVoucher(voucher)} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center">
                                                     <XCircleIcon className="h-4 w-4 ml-1" /> رفض
                                                 </button>
                                             </div>
