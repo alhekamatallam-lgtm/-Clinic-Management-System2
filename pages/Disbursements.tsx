@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Disbursement, DisbursementStatus, DisbursementType, Role, PaymentVoucherStatus, PaymentMethod } from '../types';
 import Modal from '../components/ui/Modal';
-import { PlusIcon, ChevronRightIcon, ChevronLeftIcon, CheckBadgeIcon, ClockIcon, DocumentPlusIcon, XCircleIcon, PrinterIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, ChevronRightIcon, ChevronLeftIcon, CheckBadgeIcon, ClockIcon, DocumentPlusIcon, XCircleIcon, PrinterIcon, ArrowUturnLeftIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 
 // Helper to get 'YYYY-MM-DD' from a Date object, respecting local timezone.
 const getLocalYYYYMMDD = (date: Date): string => {
@@ -19,6 +19,7 @@ const Disbursements: React.FC = () => {
     const [selectedDisbursement, setSelectedDisbursement] = useState<Disbursement | null>(null);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [printingRequest, setPrintingRequest] = useState<Disbursement | null>(null);
+    const [isArchiveOpen, setIsArchiveOpen] = useState(false);
 
     const today = getLocalYYYYMMDD(new Date());
 
@@ -42,19 +43,24 @@ const Disbursements: React.FC = () => {
     const itemsPerPage = 10;
     
     const sortedDisbursements = useMemo(() => 
-        [...disbursements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+        [...disbursements].sort((a, b) => {
+             if (!a.date || !b.date) return 0;
+             const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
+             if (dateComparison !== 0) return dateComparison;
+             return b.disbursement_id - a.disbursement_id;
+        }),
     [disbursements]);
     
-    // Pagination calculations
-    const totalPages = Math.ceil(sortedDisbursements.length / itemsPerPage);
+    const pendingApproval = useMemo(() => sortedDisbursements.filter(d => d.status === DisbursementStatus.Pending), [sortedDisbursements]);
+    const pendingVoucher = useMemo(() => sortedDisbursements.filter(d => d.status === DisbursementStatus.Approved && !paymentVouchers.some(v => v.request_id === d.disbursement_id)), [sortedDisbursements, paymentVouchers]);
+    const archiveDisbursements = useMemo(() => sortedDisbursements.filter(d => !pendingApproval.includes(d) && !pendingVoucher.includes(d)), [sortedDisbursements, pendingApproval, pendingVoucher]);
+
+    
+    // Pagination for archive
+    const totalPages = Math.ceil(archiveDisbursements.length / itemsPerPage);
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentDisbursements = sortedDisbursements.slice(indexOfFirstItem, indexOfLastItem);
-    
-    const pendingApproval = useMemo(() => currentDisbursements.filter(d => d.status === DisbursementStatus.Pending), [currentDisbursements]);
-    const pendingVoucher = useMemo(() => currentDisbursements.filter(d => d.status === DisbursementStatus.Approved && !paymentVouchers.some(v => v.request_id === d.disbursement_id)), [currentDisbursements, paymentVouchers]);
-    const otherDisbursements = useMemo(() => currentDisbursements.filter(d => !pendingApproval.includes(d) && !pendingVoucher.includes(d)), [currentDisbursements, pendingApproval, pendingVoucher]);
-
+    const currentArchivedDisbursements = archiveDisbursements.slice(indexOfFirstItem, indexOfLastItem);
     
     const handlePageChange = (pageNumber: number) => {
         if (pageNumber < 1 || pageNumber > totalPages) return;
@@ -110,18 +116,18 @@ const Disbursements: React.FC = () => {
         handleCloseModals();
     };
     
-    const handleApproveRequest = async (disbursementId: number) => {
+    const handleApproveRequest = async (disbursement: Disbursement) => {
         if (window.confirm('هل أنت متأكد من اعتماد طلب الصرف هذا؟')) {
-            setUpdatingId(disbursementId);
-            await updateDisbursementStatus(disbursementId, DisbursementStatus.Approved);
+            setUpdatingId(disbursement.disbursement_id);
+            await updateDisbursementStatus(disbursement, DisbursementStatus.Approved);
             setUpdatingId(null);
         }
     };
 
-    const handleRejectRequest = async (disbursementId: number) => {
+    const handleRejectRequest = async (disbursement: Disbursement) => {
         if (window.confirm('هل أنت متأكد من رفض طلب الصرف هذا؟')) {
-            setUpdatingId(disbursementId);
-            await updateDisbursementStatus(disbursementId, DisbursementStatus.Rejected);
+            setUpdatingId(disbursement.disbursement_id);
+            await updateDisbursementStatus(disbursement, DisbursementStatus.Rejected);
             setUpdatingId(null);
         }
     };
@@ -131,13 +137,12 @@ const Disbursements: React.FC = () => {
         setTimeout(() => window.print(), 100);
     };
     
-    // FIX: Define PaginationControls component to resolve the "Cannot find name 'PaginationControls'" error.
     const PaginationControls = () => {
         if (totalPages <= 1) return null;
         return (
             <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4">
                 <span className="text-sm text-gray-700 dark:text-gray-400">
-                    عرض {indexOfFirstItem + 1} إلى {Math.min(indexOfLastItem, sortedDisbursements.length)} من أصل {sortedDisbursements.length} سجل
+                    عرض {indexOfFirstItem + 1} إلى {Math.min(indexOfLastItem, archiveDisbursements.length)} من أصل {archiveDisbursements.length} سجل
                 </span>
                 <div className="flex items-center gap-2">
                     <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="flex items-center justify-center px-3 h-8 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
@@ -255,10 +260,10 @@ const Disbursements: React.FC = () => {
                                             <>
                                                 {isPendingApproval && user?.role === Role.Manager && (
                                                     <>
-                                                        <button onClick={() => handleApproveRequest(item.disbursement_id)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
+                                                        <button onClick={() => handleApproveRequest(item)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
                                                             <CheckBadgeIcon className="h-4 w-4 ml-1" /> اعتماد
                                                         </button>
-                                                        <button onClick={() => handleRejectRequest(item.disbursement_id)} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center">
+                                                        <button onClick={() => handleRejectRequest(item)} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center">
                                                             <XCircleIcon className="h-4 w-4 ml-1" /> رفض
                                                         </button>
                                                     </>
@@ -302,36 +307,49 @@ const Disbursements: React.FC = () => {
             
             {pendingApproval.length > 0 && renderTable('طلبات بانتظار الاعتماد', pendingApproval, true, false)}
             {pendingVoucher.length > 0 && renderTable('طلبات بانتظار الصرف', pendingVoucher, false, true)}
-            {otherDisbursements.length > 0 && (
+            
+            {archiveDisbursements.length > 0 && (
                 <div className="mt-8">
-                     <h2 className="text-lg font-bold text-gray-600 dark:text-gray-400 mb-2">الأرشيف ({otherDisbursements.length})</h2>
-                     {otherDisbursements.map(item => {
-                         const voucher = paymentVouchers.find(v => v.request_id === item.disbursement_id);
-                         let statusText = 'مرفوض';
-                         let statusColor: 'red' | 'green' = 'red';
-                         if (voucher) {
-                             statusText = voucher.status === PaymentVoucherStatus.Approved ? 'مكتمل' : 'السند مرفوض';
-                             if(voucher.status === PaymentVoucherStatus.Approved) statusColor = 'green';
-                         }
-                         return (
-                            <div key={item.disbursement_id} className="p-3 border rounded-lg mb-2 flex justify-between items-center dark:border-gray-700">
-                                <div>
-                                    <p>#{item.disbursement_id} - {item.beneficiary} - <span className="font-bold">{item.amount.toFixed(2)} ريال</span></p>
-                                    <p className="text-xs text-gray-500">{item.purpose}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                     {getStatusChip(statusText, statusColor)}
-                                     <button onClick={() => handlePrintRequest(item)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full dark:hover:bg-gray-600" title="طباعة الطلب">
-                                        <PrinterIcon className="h-5 w-5" />
-                                    </button>
-                                </div>
-                            </div>
-                         )
-                     })}
+                    <button 
+                        onClick={() => setIsArchiveOpen(!isArchiveOpen)}
+                        className="w-full flex justify-between items-center text-left text-lg font-bold text-gray-600 dark:text-gray-400 mb-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                        <span>الأرشيف ({archiveDisbursements.length})</span>
+                        <ChevronDownIcon className={`h-6 w-6 transition-transform ${isArchiveOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isArchiveOpen && (
+                        <div className="space-y-2">
+                             {currentArchivedDisbursements.map(item => {
+                                 const voucher = paymentVouchers.find(v => v.request_id === item.disbursement_id);
+                                 let statusText = 'مرفوض';
+                                 let statusColor: 'red' | 'green' = 'red';
+                                 if (voucher) {
+                                     statusText = voucher.status === PaymentVoucherStatus.Approved ? 'مكتمل' : 'السند مرفوض';
+                                     if(voucher.status === PaymentVoucherStatus.Approved) statusColor = 'green';
+                                 } else if (item.status === DisbursementStatus.Approved) {
+                                      statusText = 'خطأ: معتمد بدون سند';
+                                      statusColor = 'red';
+                                 }
+                                 return (
+                                    <div key={item.disbursement_id} className="p-3 border rounded-lg flex justify-between items-center dark:border-gray-700">
+                                        <div>
+                                            <p>#{item.disbursement_id} - {item.beneficiary} - <span className="font-bold">{item.amount.toFixed(2)} ريال</span></p>
+                                            <p className="text-xs text-gray-500">{item.purpose}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                             {getStatusChip(statusText, statusColor)}
+                                             <button onClick={() => handlePrintRequest(item)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full dark:hover:bg-gray-600" title="طباعة الطلب">
+                                                <PrinterIcon className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                 )
+                             })}
+                             <PaginationControls />
+                        </div>
+                    )}
                 </div>
             )}
-            
-            <PaginationControls />
 
             <Modal title="إضافة طلب صرف جديد" isOpen={isRequestModalOpen} onClose={handleCloseModals}>
                 <form onSubmit={handleRequestSubmit} className="space-y-4">

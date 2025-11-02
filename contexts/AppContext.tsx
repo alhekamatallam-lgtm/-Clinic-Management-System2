@@ -83,7 +83,7 @@ interface AppContextType {
     addClinic: (clinic: Omit<Clinic, 'clinic_id' | 'doctor_name'>) => Promise<void>;
     addOptimization: (suggestion: Omit<Optimization, 'optimization_id'>) => Promise<void>;
     addDisbursement: (disbursement: Omit<Disbursement, 'disbursement_id' | 'status'>) => Promise<void>;
-    updateDisbursementStatus: (disbursementId: number, status: DisbursementStatus) => Promise<void>;
+    updateDisbursementStatus: (disbursement: Disbursement, status: DisbursementStatus) => Promise<void>;
     addPaymentVoucher: (voucher: Omit<PaymentVoucher, 'voucher_id' | 'status'>) => Promise<void>;
     updatePaymentVoucherStatus: (voucher: PaymentVoucher, status: PaymentVoucherStatus) => Promise<void>;
     updateClinic: (clinicId: number, clinicData: Partial<Omit<Clinic, 'clinic_id'>>) => Promise<void>;
@@ -675,27 +675,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
     };
 
-    const updateDisbursementStatus = async (disbursementId: number, status: DisbursementStatus) => {
-        const originalDisbursement = disbursements.find(d => d.disbursement_id === disbursementId);
-        if (!originalDisbursement) {
+    const updateDisbursementStatus = async (disbursement: Disbursement, status: DisbursementStatus) => {
+        if (!disbursement) {
             showNotification('لم يتم العثور على طلب الصرف', 'error');
             return;
         }
 
         try {
-            const rowData = {
-                "رقم الطلب": originalDisbursement.disbursement_id,
-                "التاريخ": originalDisbursement.date,
-                "نوع الصرف": originalDisbursement.disbursement_type,
-                "المبلغ": originalDisbursement.amount,
-                "المستفيد": originalDisbursement.beneficiary,
-                "الغرض من الصرف": originalDisbursement.purpose,
-                "الحالة": status,
-            };
-
             const payload = {
                 action: 'update',
-                ...rowData,
+                "رقم الطلب": disbursement.disbursement_id,
+                "التاريخ": disbursement.date,
+                "نوع الصرف": disbursement.disbursement_type,
+                "المبلغ": disbursement.amount,
+                "المستفيد": disbursement.beneficiary,
+                "الغرض من الصرف": disbursement.purpose,
+                "الحالة": status,
             };
 
             const result = await postData('Disbursement', payload);
