@@ -682,8 +682,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
 
         try {
-            const dataToSend = {
-                action: 'update',
+            const rowData = {
                 "رقم الطلب": originalDisbursement.disbursement_id,
                 "التاريخ": originalDisbursement.date,
                 "نوع الصرف": originalDisbursement.disbursement_type,
@@ -692,7 +691,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 "الغرض من الصرف": originalDisbursement.purpose,
                 "الحالة": status,
             };
-            const result = await postData('Disbursement', dataToSend);
+
+            const payload = {
+                action: 'update',
+                key: { "رقم الطلب": disbursementId },
+                data: rowData,
+            };
+
+            const result = await postData('Disbursement', payload);
             if (result.success) {
                 showNotification(result.message || 'تم تحديث حالة الطلب بنجاح', 'success');
                 await fetchData(true);
@@ -743,8 +749,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             return;
         }
         try {
-            const dataToSend = {
-                action: 'update',
+            const rowData = {
                 "رقم السند": originalVoucher.voucher_id,
                 "رقم الطلب": originalVoucher.request_id,
                 "التاريخ": originalVoucher.date,
@@ -755,7 +760,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 "طريقة الصرف": originalVoucher.payment_method,
                 "الحالة": status,
             };
-            const result = await postData('Payment Voucher', dataToSend);
+            
+            const payload = {
+                action: 'update',
+                key: { "رقم السند": voucherId },
+                data: rowData,
+            };
+
+            const result = await postData('Payment Voucher', payload);
             if (result.success) {
                 showNotification(result.message || 'تم تحديث حالة السند بنجاح', 'success');
                 await fetchData(true);
