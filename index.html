@@ -37,24 +37,6 @@
         .dark ::-webkit-scrollbar-thumb:hover {
             background: #a0aec0; /* gray-400 */
         }
-        /* Print-specific styles */
-        @media print {
-            .no-print {
-                display: none !important;
-            }
-            .printable-area {
-                padding: 0 !important;
-                margin: 0 !important;
-                box-shadow: none !important;
-                border: none !important;
-            }
-            body {
-                background-color: #fff;
-            }
-            .printable-medical-report {
-                font-size: 12pt;
-            }
-        }
         /* Animation for notifications */
         @keyframes fadeInDown {
             from {
@@ -84,6 +66,30 @@
         .animate-fade-in-slide-down {
           animation: fadeInSlideDown 0.5s ease-out forwards;
         }
+        
+        /* Print-specific styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .printable-area {
+                display: block !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                padding: 2rem;
+                background-color: white;
+            }
+            body {
+                background-color: #fff !important;
+            }
+            #root > *:not(.printable-area) {
+                display: none !important;
+            }
+        }
+
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900">

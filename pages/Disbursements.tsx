@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { Disbursement, DisbursementStatus, DisbursementType, Role, PaymentVoucher, PaymentVoucherStatus, PaymentMethod } from '../types';
+import { Disbursement, DisbursementStatus, DisbursementType, Role, PaymentVoucherStatus, PaymentMethod } from '../types';
 import Modal from '../components/ui/Modal';
-import { PlusIcon, ChevronRightIcon, ChevronLeftIcon, CheckBadgeIcon, ClockIcon, DocumentPlusIcon, XCircleIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, ChevronRightIcon, ChevronLeftIcon, CheckBadgeIcon, ClockIcon, DocumentPlusIcon, XCircleIcon, PrinterIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/solid';
 
 // Helper to get 'YYYY-MM-DD' from a Date object, respecting local timezone.
 const getLocalYYYYMMDD = (date: Date): string => {
@@ -13,10 +13,12 @@ const getLocalYYYYMMDD = (date: Date): string => {
 };
 
 const Disbursements: React.FC = () => {
-    const { user, disbursements, paymentVouchers, addDisbursement, updateDisbursementStatus, addPaymentVoucher, updatePaymentVoucherStatus, isAdding } = useApp();
+    const { user, disbursements, paymentVouchers, addDisbursement, updateDisbursementStatus, addPaymentVoucher, isAdding, clinicLogo } = useApp();
     const [isRequestModalOpen, setRequestModalOpen] = useState(false);
     const [isVoucherModalOpen, setVoucherModalOpen] = useState(false);
     const [selectedDisbursement, setSelectedDisbursement] = useState<Disbursement | null>(null);
+    const [updatingId, setUpdatingId] = useState<number | null>(null);
+    const [printingRequest, setPrintingRequest] = useState<Disbursement | null>(null);
 
     const today = getLocalYYYYMMDD(new Date());
 
@@ -29,13 +31,9 @@ const Disbursements: React.FC = () => {
     };
     const [requestFormData, setRequestFormData] = useState(initialRequestFormState);
 
-    const initialVoucherFormState: Omit<PaymentVoucher, 'voucher_id' | 'status' | 'request_id'> = {
-        date: today,
-        disbursement_type: DisbursementType.Cash,
-        amount: 0,
-        beneficiary: '',
-        purpose: '',
+    const initialVoucherFormState = {
         payment_method: PaymentMethod.Cash,
+        notes: '',
     };
     const [voucherFormData, setVoucherFormData] = useState(initialVoucherFormState);
 
@@ -53,9 +51,10 @@ const Disbursements: React.FC = () => {
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentDisbursements = sortedDisbursements.slice(indexOfFirstItem, indexOfLastItem);
     
-    const totalAmount = useMemo(() => 
-        currentDisbursements.reduce((sum, item) => sum + item.amount, 0),
-    [currentDisbursements]);
+    const pendingApproval = useMemo(() => currentDisbursements.filter(d => d.status === DisbursementStatus.Pending), [currentDisbursements]);
+    const pendingVoucher = useMemo(() => currentDisbursements.filter(d => d.status === DisbursementStatus.Approved && !paymentVouchers.some(v => v.request_id === d.disbursement_id)), [currentDisbursements, paymentVouchers]);
+    const otherDisbursements = useMemo(() => currentDisbursements.filter(d => !pendingApproval.includes(d) && !pendingVoucher.includes(d)), [currentDisbursements, pendingApproval, pendingVoucher]);
+
     
     const handlePageChange = (pageNumber: number) => {
         if (pageNumber < 1 || pageNumber > totalPages) return;
@@ -69,14 +68,7 @@ const Disbursements: React.FC = () => {
 
     const handleOpenVoucherModal = (disbursement: Disbursement) => {
         setSelectedDisbursement(disbursement);
-        setVoucherFormData({
-            date: today,
-            disbursement_type: disbursement.disbursement_type,
-            amount: disbursement.amount,
-            beneficiary: disbursement.beneficiary,
-            purpose: disbursement.purpose,
-            payment_method: PaymentMethod.Cash
-        });
+        setVoucherFormData(initialVoucherFormState);
         setVoucherModalOpen(true);
     };
 
@@ -106,61 +98,60 @@ const Disbursements: React.FC = () => {
         e.preventDefault();
         if (!selectedDisbursement) return;
         await addPaymentVoucher({
-            ...voucherFormData,
-            request_id: selectedDisbursement.disbursement_id
+            request_id: selectedDisbursement.disbursement_id,
+            date: today,
+            disbursement_type: selectedDisbursement.disbursement_type,
+            amount: selectedDisbursement.amount,
+            beneficiary: selectedDisbursement.beneficiary,
+            purpose: selectedDisbursement.purpose,
+            payment_method: voucherFormData.payment_method,
+            notes: voucherFormData.notes,
         });
         handleCloseModals();
     };
     
-    const handleApproveRequest = (disbursementId: number) => {
+    const handleApproveRequest = async (disbursementId: number) => {
         if (window.confirm('هل أنت متأكد من اعتماد طلب الصرف هذا؟')) {
-            updateDisbursementStatus(disbursementId, DisbursementStatus.Approved);
+            setUpdatingId(disbursementId);
+            await updateDisbursementStatus(disbursementId, DisbursementStatus.Approved);
+            setUpdatingId(null);
         }
     };
 
-    const handleRejectRequest = (disbursementId: number) => {
+    const handleRejectRequest = async (disbursementId: number) => {
         if (window.confirm('هل أنت متأكد من رفض طلب الصرف هذا؟')) {
-            updateDisbursementStatus(disbursementId, DisbursementStatus.Rejected);
-        }
-    };
-
-    // FIX: Changed parameter from `voucherId` to `voucher` to pass the entire object.
-    const handleApproveVoucher = (voucher: PaymentVoucher) => {
-        if (window.confirm('هل أنت متأكد من اعتماد سند الصرف هذا؟')) {
-            updatePaymentVoucherStatus(voucher, PaymentVoucherStatus.Approved);
-        }
-    };
-
-    // FIX: Changed parameter from `voucherId` to `voucher` to pass the entire object.
-    const handleRejectVoucher = (voucher: PaymentVoucher) => {
-        if (window.confirm('هل أنت متأكد من رفض سند الصرف هذا؟')) {
-            updatePaymentVoucherStatus(voucher, PaymentVoucherStatus.Rejected);
+            setUpdatingId(disbursementId);
+            await updateDisbursementStatus(disbursementId, DisbursementStatus.Rejected);
+            setUpdatingId(null);
         }
     };
     
-    // FIX: Replaced JSX.Element with React.ReactNode to resolve "Cannot find namespace 'JSX'" error.
-    const getOverallStatus = (disbursement: Disbursement): { text: string; chip: React.ReactNode } => {
-        const voucher = paymentVouchers.find(v => v.request_id === disbursement.disbursement_id);
-        
-        if (voucher) {
-            if (voucher.status === PaymentVoucherStatus.Approved) {
-                return { text: 'مكتمل', chip: getStatusChip('مكتمل', 'green') };
-            }
-             if (voucher.status === PaymentVoucherStatus.Rejected) {
-                return { text: 'السند مرفوض', chip: getStatusChip('السند مرفوض', 'red') };
-            }
-            return { text: 'بانتظار اعتماد السند', chip: getStatusChip('بانتظار اعتماد السند', 'blue') };
-        }
-        
-        if (disbursement.status === DisbursementStatus.Approved) {
-            return { text: 'بانتظار إنشاء السند', chip: getStatusChip('بانتظار إنشاء السند', 'indigo') };
-        }
-        
-        if (disbursement.status === DisbursementStatus.Rejected) {
-            return { text: 'الطلب مرفوض', chip: getStatusChip('الطلب مرفوض', 'red') };
-        }
-        
-        return { text: 'بانتظار اعتماد الطلب', chip: getStatusChip('بانتظار اعتماد الطلب', 'yellow') };
+    const handlePrintRequest = (request: Disbursement) => {
+        setPrintingRequest(request);
+        setTimeout(() => window.print(), 100);
+    };
+    
+    // FIX: Define PaginationControls component to resolve the "Cannot find name 'PaginationControls'" error.
+    const PaginationControls = () => {
+        if (totalPages <= 1) return null;
+        return (
+            <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4">
+                <span className="text-sm text-gray-700 dark:text-gray-400">
+                    عرض {indexOfFirstItem + 1} إلى {Math.min(indexOfLastItem, sortedDisbursements.length)} من أصل {sortedDisbursements.length} سجل
+                </span>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="flex items-center justify-center px-3 h-8 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                        <ChevronRightIcon className="w-4 h-4" />
+                        <span className="hidden sm:inline">السابق</span>
+                    </button>
+                    <span className="text-sm text-gray-700 dark:text-gray-400">صفحة {currentPage} من {totalPages}</span>
+                    <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="flex items-center justify-center px-3 h-8 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                        <span className="hidden sm:inline">التالي</span>
+                        <ChevronLeftIcon className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+        );
     };
 
     const getStatusChip = (statusText: string, color: 'yellow' | 'green' | 'blue' | 'indigo' | 'red') => {
@@ -187,28 +178,114 @@ const Disbursements: React.FC = () => {
             </span>
         );
     };
+
+    const ActionSpinner: React.FC = () => (
+        <div className="flex items-center justify-center text-sm text-gray-500">
+            <svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            جاري...
+        </div>
+    );
     
-    const PaginationControls = () => {
-        if (totalPages <= 1) return null;
-        return (
-            <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4">
-                <span className="text-sm text-gray-700 dark:text-gray-400">
-                    عرض {indexOfFirstItem + 1} إلى {Math.min(indexOfLastItem, sortedDisbursements.length)} من أصل {sortedDisbursements.length} سجل
-                </span>
-                <div className="flex items-center gap-2">
-                    <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="flex items-center justify-center px-3 h-8 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
-                        <ChevronRightIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">السابق</span>
-                    </button>
-                    <span className="text-sm text-gray-700 dark:text-gray-400">صفحة {currentPage} من {totalPages}</span>
-                    <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="flex items-center justify-center px-3 h-8 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
-                        <span className="hidden sm:inline">التالي</span>
-                        <ChevronLeftIcon className="w-4 h-4" />
-                    </button>
+    const PrintableDisbursementRequest: React.FC<{ request: Disbursement; onBack: () => void; }> = ({ request, onBack }) => (
+        <div className="printable-area bg-white text-black p-8">
+            <header className="flex justify-between items-center border-b-2 border-gray-800 pb-4 mb-8">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">مستوصف الراجحي التكافلي</h1>
+                    <p className="text-md text-gray-600">Al Rajhi Takaful Polyclinic</p>
                 </div>
+                 {clinicLogo && <img src={clinicLogo} alt="شعار المستوصف" className="h-20 w-auto object-contain" />}
+            </header>
+            <h2 className="text-center text-xl font-bold mb-6 underline">طلب صرف</h2>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8 text-md">
+                <p><strong>رقم الطلب:</strong> {request.disbursement_id}</p>
+                <p><strong>التاريخ:</strong> {request.date}</p>
+                <p><strong>المستفيد:</strong> {request.beneficiary}</p>
+                <p><strong>نوع الصرف:</strong> {request.disbursement_type}</p>
+                <p className="col-span-2"><strong>المبلغ:</strong> {request.amount.toFixed(2)} ريال</p>
+                <p className="col-span-2"><strong>الغرض من الصرف:</strong> {request.purpose}</p>
             </div>
-        );
-    };
+            <footer className="pt-24">
+                <div className="flex justify-around items-end">
+                    <div className="text-center w-1/2">
+                        <p className="font-bold mb-12">صاحب الطلب</p>
+                        <p className="border-t-2 border-dotted border-gray-400 w-48 mx-auto"></p>
+                    </div>
+                    <div className="text-center w-1/2">
+                        <p className="font-bold mb-12">المدير</p>
+                        <p className="border-t-2 border-dotted border-gray-400 w-48 mx-auto"></p>
+                    </div>
+                </div>
+            </footer>
+            <div className="no-print mt-8 text-center">
+                <button onClick={onBack} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center mx-auto">
+                    <ArrowUturnLeftIcon className="h-5 w-5 ml-2" />
+                    عودة
+                </button>
+            </div>
+        </div>
+    );
+    
+    const renderTable = (title: string, data: Disbursement[], isPendingApproval?: boolean, isPendingVoucher?: boolean) => (
+        <div className="mb-8">
+            <h2 className="text-lg font-bold text-gray-600 dark:text-gray-400 mb-2">{title} ({data.length})</h2>
+            <div className="overflow-x-auto border rounded-lg dark:border-gray-700">
+                <table className="w-full text-right">
+                     <thead className="bg-gray-100 dark:bg-gray-700">
+                        <tr>
+                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">#</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">التاريخ</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">المبلغ</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">المستفيد</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">إجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {data.map(item => (
+                            <tr key={item.disbursement_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.disbursement_id}</td>
+                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.date}</td>
+                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300 font-bold">{item.amount.toFixed(2)} ريال</td>
+                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.beneficiary}</td>
+                                <td className="p-3 text-sm">
+                                    <div className="flex items-center gap-2">
+                                        {updatingId === item.disbursement_id ? <ActionSpinner /> : (
+                                            <>
+                                                {isPendingApproval && user?.role === Role.Manager && (
+                                                    <>
+                                                        <button onClick={() => handleApproveRequest(item.disbursement_id)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
+                                                            <CheckBadgeIcon className="h-4 w-4 ml-1" /> اعتماد
+                                                        </button>
+                                                        <button onClick={() => handleRejectRequest(item.disbursement_id)} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center">
+                                                            <XCircleIcon className="h-4 w-4 ml-1" /> رفض
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {isPendingVoucher && user?.role === Role.Accountant && (
+                                                    <button onClick={() => handleOpenVoucherModal(item)} className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 flex items-center">
+                                                        <DocumentPlusIcon className="h-4 w-4 ml-1" /> إنشاء سند
+                                                    </button>
+                                                )}
+                                                <button onClick={() => handlePrintRequest(item)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full dark:hover:bg-gray-600" title="طباعة الطلب">
+                                                    <PrinterIcon className="h-5 w-5" />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
+    if (printingRequest) {
+        return <PrintableDisbursementRequest request={printingRequest} onBack={() => setPrintingRequest(null)} />;
+    }
 
     return (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
@@ -222,70 +299,37 @@ const Disbursements: React.FC = () => {
                     إضافة طلب صرف
                 </button>
             </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-right">
-                    <thead className="bg-gray-100 dark:bg-gray-700">
-                        <tr>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">رقم الطلب</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">التاريخ</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">المبلغ</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">المستفيد</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">الغرض</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">الحالة</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">إجراء</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                        {currentDisbursements.map(item => {
-                            const overallStatus = getOverallStatus(item);
-                            const voucher = paymentVouchers.find(v => v.request_id === item.disbursement_id);
-                            return (
-                                <tr key={item.disbursement_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.disbursement_id}</td>
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.date}</td>
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300 font-bold">{item.amount.toFixed(2)} ريال</td>
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.beneficiary}</td>
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.purpose}</td>
-                                    <td className="p-3 text-sm">{overallStatus.chip}</td>
-                                    <td className="p-3 text-sm">
-                                        {user?.role === Role.Manager && item.status === DisbursementStatus.Pending && (
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => handleApproveRequest(item.disbursement_id)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
-                                                    <CheckBadgeIcon className="h-4 w-4 ml-1" /> اعتماد
-                                                </button>
-                                                <button onClick={() => handleRejectRequest(item.disbursement_id)} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center">
-                                                    <XCircleIcon className="h-4 w-4 ml-1" /> رفض
-                                                </button>
-                                            </div>
-                                        )}
-                                        {user?.role === Role.Accountant && item.status === DisbursementStatus.Approved && !voucher && (
-                                            <button onClick={() => handleOpenVoucherModal(item)} className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 flex items-center">
-                                                <DocumentPlusIcon className="h-4 w-4 ml-1" /> إضافة سند صرف
-                                            </button>
-                                        )}
-                                         {user?.role === Role.Manager && voucher && voucher.status === PaymentVoucherStatus.Pending && (
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => handleApproveVoucher(voucher)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
-                                                    <CheckBadgeIcon className="h-4 w-4 ml-1" /> اعتماد
-                                                </button>
-                                                <button onClick={() => handleRejectVoucher(voucher)} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center">
-                                                    <XCircleIcon className="h-4 w-4 ml-1" /> رفض
-                                                </button>
-                                            </div>
-                                        )}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                    <tfoot className="bg-gray-100 dark:bg-gray-700">
-                        <tr>
-                            <td colSpan={2} className="p-3 text-sm font-bold text-gray-800 dark:text-gray-200 text-left">إجمالي الصفحة الحالية</td>
-                            <td colSpan={5} className="p-3 text-sm font-bold text-teal-700 dark:text-teal-400 text-right">{totalAmount.toFixed(2)} ريال</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+            
+            {pendingApproval.length > 0 && renderTable('طلبات بانتظار الاعتماد', pendingApproval, true, false)}
+            {pendingVoucher.length > 0 && renderTable('طلبات بانتظار الصرف', pendingVoucher, false, true)}
+            {otherDisbursements.length > 0 && (
+                <div className="mt-8">
+                     <h2 className="text-lg font-bold text-gray-600 dark:text-gray-400 mb-2">الأرشيف ({otherDisbursements.length})</h2>
+                     {otherDisbursements.map(item => {
+                         const voucher = paymentVouchers.find(v => v.request_id === item.disbursement_id);
+                         let statusText = 'مرفوض';
+                         let statusColor: 'red' | 'green' = 'red';
+                         if (voucher) {
+                             statusText = voucher.status === PaymentVoucherStatus.Approved ? 'مكتمل' : 'السند مرفوض';
+                             if(voucher.status === PaymentVoucherStatus.Approved) statusColor = 'green';
+                         }
+                         return (
+                            <div key={item.disbursement_id} className="p-3 border rounded-lg mb-2 flex justify-between items-center dark:border-gray-700">
+                                <div>
+                                    <p>#{item.disbursement_id} - {item.beneficiary} - <span className="font-bold">{item.amount.toFixed(2)} ريال</span></p>
+                                    <p className="text-xs text-gray-500">{item.purpose}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                     {getStatusChip(statusText, statusColor)}
+                                     <button onClick={() => handlePrintRequest(item)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full dark:hover:bg-gray-600" title="طباعة الطلب">
+                                        <PrinterIcon className="h-5 w-5" />
+                                    </button>
+                                </div>
+                            </div>
+                         )
+                     })}
+                </div>
+            )}
             
             <PaginationControls />
 
@@ -297,7 +341,7 @@ const Disbursements: React.FC = () => {
                             <option value={DisbursementType.Cash}>نقدي</option>
                             <option value={DisbursementType.Transfer}>تحويل</option>
                         </select>
-                        <div className="md:col-span-2"><input type="number" name="amount" value={requestFormData.amount} onChange={handleRequestChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required min="0" step="any" placeholder="المبلغ" /></div>
+                        <div className="md:col-span-2"><input type="number" name="amount" value={requestFormData.amount || ''} onChange={handleRequestChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required min="0" step="any" placeholder="المبلغ" /></div>
                         <div className="md:col-span-2"><input type="text" name="beneficiary" value={requestFormData.beneficiary} onChange={handleRequestChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required placeholder="المستفيد" /></div>
                         <div className="md:col-span-2"><textarea name="purpose" value={requestFormData.purpose} onChange={handleRequestChange} rows={3} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required placeholder="الغرض من الصرف" /></div>
                     </div>
@@ -308,9 +352,9 @@ const Disbursements: React.FC = () => {
             <Modal title={`إضافة سند صرف للطلب رقم ${selectedDisbursement?.disbursement_id}`} isOpen={isVoucherModalOpen} onClose={handleCloseModals}>
                  <form onSubmit={handleVoucherSubmit} className="space-y-4">
                     <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-2">
-                        <p><strong>المستفيد:</strong> {voucherFormData.beneficiary}</p>
-                        <p><strong>المبلغ:</strong> {voucherFormData.amount.toFixed(2)} ريال</p>
-                        <p><strong>الغرض:</strong> {voucherFormData.purpose}</p>
+                        <p><strong>المستفيد:</strong> {selectedDisbursement?.beneficiary}</p>
+                        <p><strong>المبلغ:</strong> {selectedDisbursement?.amount.toFixed(2)} ريال</p>
+                        <p><strong>الغرض:</strong> {selectedDisbursement?.purpose}</p>
                     </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">طريقة الصرف</label>
@@ -319,6 +363,10 @@ const Disbursements: React.FC = () => {
                             <option value={PaymentMethod.BankTransfer}>تحويل بنكي</option>
                             <option value={PaymentMethod.Cheque}>شيك</option>
                         </select>
+                     </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ملاحظات</label>
+                        <textarea name="notes" value={voucherFormData.notes} onChange={handleVoucherChange} rows={3} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="أضف ملاحظات (اختياري)..." />
                      </div>
                      <button type="submit" className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400" disabled={isAdding}>{isAdding ? 'جاري الإنشاء...' : 'إنشاء سند الصرف'}</button>
                  </form>

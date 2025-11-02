@@ -107,6 +107,7 @@ export interface PaymentVoucher {
     purpose: string;
     payment_method: PaymentMethod;
     status: PaymentVoucherStatus;
+    notes?: string;
 }
 
 

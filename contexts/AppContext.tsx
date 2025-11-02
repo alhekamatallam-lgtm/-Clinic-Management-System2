@@ -243,6 +243,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                     purpose: v['مقابل / الغرض من الصرف'],
                     payment_method: v['طريقة الصرف'] as PaymentMethod,
                     status: v['الحالة'] as PaymentVoucherStatus,
+                    notes: v['ملاحظات'] || '',
                 }));
 
                 // Process Settings - new structure is an array with a single object
@@ -723,6 +724,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 "المستفيد": dataWithStatus.beneficiary,
                 "مقابل / الغرض من الصرف": dataWithStatus.purpose,
                 "طريقة الصرف": dataWithStatus.payment_method,
+                "ملاحظات": dataWithStatus.notes || '',
                 "الحالة": dataWithStatus.status,
             };
 
@@ -747,10 +749,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             return;
         }
         try {
-            // Construct payload with Arabic keys.
-            // OMIT "رقم السند" because its value is 0 and unreliable for updates.
-            // We rely on "رقم الطلب" to uniquely identify the row for update.
-            // We send all other fields to prevent the backend from clearing them.
             const rowData = {
                 "رقم الطلب": voucherToUpdate.request_id,
                 "التاريخ": voucherToUpdate.date,
@@ -759,15 +757,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 "المستفيد": voucherToUpdate.beneficiary,
                 "مقابل / الغرض من الصرف": voucherToUpdate.purpose,
                 "طريقة الصرف": voucherToUpdate.payment_method,
+                "ملاحظات": voucherToUpdate.notes || '',
                 "الحالة": status,
             };
             
             const payload = {
                 action: 'update',
                 ...rowData,
-                // We must also include 'رقم السند' in the payload, even if it's 0,
-                // so the backend doesn't clear the column. The backend script should
-                // prioritize 'رقم الطلب' for the lookup if 'رقم السند' is 0.
                 "رقم السند": voucherToUpdate.voucher_id,
             };
 
