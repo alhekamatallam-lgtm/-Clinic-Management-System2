@@ -675,10 +675,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     const updateDisbursementStatus = async (disbursementId: number, status: DisbursementStatus) => {
+        const originalDisbursement = disbursements.find(d => d.disbursement_id === disbursementId);
+        if (!originalDisbursement) {
+            showNotification('لم يتم العثور على طلب الصرف', 'error');
+            return;
+        }
+
         try {
             const dataToSend = {
                 action: 'update',
-                "رقم الطلب": disbursementId,
+                "رقم الطلب": originalDisbursement.disbursement_id,
+                "التاريخ": originalDisbursement.date,
+                "نوع الصرف": originalDisbursement.disbursement_type,
+                "المبلغ": originalDisbursement.amount,
+                "المستفيد": originalDisbursement.beneficiary,
+                "الغرض من الصرف": originalDisbursement.purpose,
                 "الحالة": status,
             };
             const result = await postData('Disbursement', dataToSend);
@@ -726,22 +737,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     const updatePaymentVoucherStatus = async (voucherId: number, status: PaymentVoucherStatus) => {
+        const originalVoucher = paymentVouchers.find(v => v.voucher_id === voucherId);
+        if (!originalVoucher) {
+            showNotification('لم يتم العثور على سند الصرف', 'error');
+            return;
+        }
         try {
             const dataToSend = {
                 action: 'update',
-                "رقم السند": voucherId,
+                "رقم السند": originalVoucher.voucher_id,
+                "رقم الطلب": originalVoucher.request_id,
+                "التاريخ": originalVoucher.date,
+                "نوع الصرف": originalVoucher.disbursement_type,
+                "المبلغ": originalVoucher.amount,
+                "المستفيد": originalVoucher.beneficiary,
+                "مقابل / الغرض من الصرف": originalVoucher.purpose,
+                "طريقة الصرف": originalVoucher.payment_method,
                 "الحالة": status,
             };
             const result = await postData('Payment Voucher', dataToSend);
             if (result.success) {
-                showNotification(result.message || 'تم اعتماد سند الصرف بنجاح', 'success');
+                showNotification(result.message || 'تم تحديث حالة السند بنجاح', 'success');
                 await fetchData(true);
             } else {
-                 showNotification(result.message || 'فشل اعتماد سند الصرف', 'error');
+                 showNotification(result.message || 'فشل تحديث حالة السند', 'error');
             }
         } catch (e: any)
         {
-            showNotification(e.message || 'فشل اعتماد سند الصرف', 'error');
+            showNotification(e.message || 'فشل تحديث حالة السند', 'error');
             console.error("Failed to update payment voucher status:", e);
         }
     };

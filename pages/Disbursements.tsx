@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Disbursement, DisbursementStatus, DisbursementType, Role, PaymentVoucher, PaymentVoucherStatus, PaymentMethod } from '../types';
 import Modal from '../components/ui/Modal';
-import { PlusIcon, ChevronRightIcon, ChevronLeftIcon, CheckBadgeIcon, ClockIcon, DocumentPlusIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, ChevronRightIcon, ChevronLeftIcon, CheckBadgeIcon, ClockIcon, DocumentPlusIcon, XCircleIcon } from '@heroicons/react/24/solid';
 
 // Helper to get 'YYYY-MM-DD' from a Date object, respecting local timezone.
 const getLocalYYYYMMDD = (date: Date): string => {
@@ -118,9 +118,21 @@ const Disbursements: React.FC = () => {
         }
     };
 
+    const handleRejectRequest = (disbursementId: number) => {
+        if (window.confirm('هل أنت متأكد من رفض طلب الصرف هذا؟')) {
+            updateDisbursementStatus(disbursementId, DisbursementStatus.Rejected);
+        }
+    };
+
     const handleApproveVoucher = (voucherId: number) => {
         if (window.confirm('هل أنت متأكد من اعتماد سند الصرف هذا؟')) {
             updatePaymentVoucherStatus(voucherId, PaymentVoucherStatus.Approved);
+        }
+    };
+
+    const handleRejectVoucher = (voucherId: number) => {
+        if (window.confirm('هل أنت متأكد من رفض سند الصرف هذا؟')) {
+            updatePaymentVoucherStatus(voucherId, PaymentVoucherStatus.Rejected);
         }
     };
     
@@ -132,6 +144,9 @@ const Disbursements: React.FC = () => {
             if (voucher.status === PaymentVoucherStatus.Approved) {
                 return { text: 'مكتمل', chip: getStatusChip('مكتمل', 'green') };
             }
+             if (voucher.status === PaymentVoucherStatus.Rejected) {
+                return { text: 'السند مرفوض', chip: getStatusChip('السند مرفوض', 'red') };
+            }
             return { text: 'بانتظار اعتماد السند', chip: getStatusChip('بانتظار اعتماد السند', 'blue') };
         }
         
@@ -139,23 +154,29 @@ const Disbursements: React.FC = () => {
             return { text: 'بانتظار إنشاء السند', chip: getStatusChip('بانتظار إنشاء السند', 'indigo') };
         }
         
+        if (disbursement.status === DisbursementStatus.Rejected) {
+            return { text: 'الطلب مرفوض', chip: getStatusChip('الطلب مرفوض', 'red') };
+        }
+        
         return { text: 'بانتظار اعتماد الطلب', chip: getStatusChip('بانتظار اعتماد الطلب', 'yellow') };
     };
 
-    const getStatusChip = (statusText: string, color: 'yellow' | 'green' | 'blue' | 'indigo') => {
+    const getStatusChip = (statusText: string, color: 'yellow' | 'green' | 'blue' | 'indigo' | 'red') => {
         const colors = {
             yellow: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
             green: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
             blue: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-            indigo: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300'
+            indigo: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
+            red: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
         };
         const iconColors = {
             yellow: 'text-yellow-500',
             green: 'text-green-500',
             blue: 'text-blue-500',
-            indigo: 'text-indigo-500'
+            indigo: 'text-indigo-500',
+            red: 'text-red-500'
         };
-        const Icon = color === 'green' ? CheckBadgeIcon : ClockIcon;
+        const Icon = color === 'green' ? CheckBadgeIcon : color === 'red' ? XCircleIcon : ClockIcon;
 
         return (
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[color]}`}>
@@ -226,9 +247,14 @@ const Disbursements: React.FC = () => {
                                     <td className="p-3 text-sm">{overallStatus.chip}</td>
                                     <td className="p-3 text-sm">
                                         {user?.role === Role.Manager && item.status === DisbursementStatus.Pending && (
-                                            <button onClick={() => handleApproveRequest(item.disbursement_id)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
-                                                <CheckBadgeIcon className="h-4 w-4 ml-1" /> اعتماد الطلب
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => handleApproveRequest(item.disbursement_id)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
+                                                    <CheckBadgeIcon className="h-4 w-4 ml-1" /> اعتماد
+                                                </button>
+                                                <button onClick={() => handleRejectRequest(item.disbursement_id)} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center">
+                                                    <XCircleIcon className="h-4 w-4 ml-1" /> رفض
+                                                </button>
+                                            </div>
                                         )}
                                         {user?.role === Role.Accountant && item.status === DisbursementStatus.Approved && !voucher && (
                                             <button onClick={() => handleOpenVoucherModal(item)} className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 flex items-center">
@@ -236,9 +262,14 @@ const Disbursements: React.FC = () => {
                                             </button>
                                         )}
                                          {user?.role === Role.Manager && voucher && voucher.status === PaymentVoucherStatus.Pending && (
-                                            <button onClick={() => handleApproveVoucher(voucher.voucher_id)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
-                                                <CheckBadgeIcon className="h-4 w-4 ml-1" /> اعتماد السند
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => handleApproveVoucher(voucher.voucher_id)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
+                                                    <CheckBadgeIcon className="h-4 w-4 ml-1" /> اعتماد
+                                                </button>
+                                                <button onClick={() => handleRejectVoucher(voucher.voucher_id)} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center">
+                                                    <XCircleIcon className="h-4 w-4 ml-1" /> رفض
+                                                </button>
+                                            </div>
                                         )}
                                     </td>
                                 </tr>

@@ -133,6 +133,7 @@ export enum VisitType {
 export enum DisbursementStatus {
     Pending = 'بانتظار الاعتماد',
     Approved = 'معتمد',
+    Rejected = 'مرفوض',
 }
 
 export enum DisbursementType {
@@ -143,6 +144,7 @@ export enum DisbursementType {
 export enum PaymentVoucherStatus {
     Pending = 'بانتظار الاعتماد',
     Approved = 'معتمد',
+    Rejected = 'مرفوض',
 }
 
 export enum PaymentMethod {
