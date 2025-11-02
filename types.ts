@@ -87,11 +87,35 @@ export interface Optimization {
     optimize: string;
 }
 
+export interface Disbursement {
+    disbursement_id: number;
+    date: string;
+    disbursement_type: DisbursementType;
+    amount: number;
+    beneficiary: string;
+    purpose: string;
+    status: DisbursementStatus;
+}
+
+export interface PaymentVoucher {
+    voucher_id: number;
+    request_id: number;
+    date: string;
+    disbursement_type: DisbursementType;
+    amount: number;
+    beneficiary: string;
+    purpose: string;
+    payment_method: PaymentMethod;
+    status: PaymentVoucherStatus;
+}
+
+
 export enum Role {
     Manager = 'manager',
     Doctor = 'doctor',
     Reception = 'reception',
     QueueScreen = 'queuescreen',
+    Accountant = 'accountant',
 }
 
 export enum VisitStatus {
@@ -105,6 +129,28 @@ export enum VisitType {
     FirstVisit = 'كشف جديد',
     FollowUp = 'متابعة',
 }
+
+export enum DisbursementStatus {
+    Pending = 'بانتظار الاعتماد',
+    Approved = 'معتمد',
+}
+
+export enum DisbursementType {
+    Cash = 'نقدي',
+    Transfer = 'تحويل',
+}
+
+export enum PaymentVoucherStatus {
+    Pending = 'بانتظار الاعتماد',
+    Approved = 'معتمد',
+}
+
+export enum PaymentMethod {
+    BankTransfer = 'تحويل بنكي',
+    Cash = 'نقدي',
+    Cheque = 'شيك',
+}
+
 
 export type View = 
     | 'dashboard'
@@ -120,6 +166,7 @@ export type View =
     | 'queue'
     | 'manual-revenue'
     | 'revenues'
+    | 'disbursements'
     | 'settings'
     | 'documentation'
     | 'optimization';

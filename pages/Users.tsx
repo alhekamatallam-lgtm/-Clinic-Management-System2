@@ -9,6 +9,7 @@ const translateRole = (role: Role) => {
         case Role.Manager: return 'مدير';
         case Role.Doctor: return 'طبيب';
         case Role.Reception: return 'موظف استقبال';
+        case Role.Accountant: return 'محاسب';
         case Role.QueueScreen: return 'شاشة عرض الانتظار';
         default: return role;
     }
@@ -309,6 +310,7 @@ const Users: React.FC = () => {
                         <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">الصلاحية</label>
                         <select name="role" value={formData.role || ''} onChange={handleFormChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
                             <option value={Role.Reception}>موظف استقبال</option>
+                            <option value={Role.Accountant}>محاسب</option>
                             <option value={Role.Doctor}>طبيب</option>
                             <option value={Role.Manager}>مدير</option>
                             <option value={Role.QueueScreen}>شاشة عرض الانتظار</option>

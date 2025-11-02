@@ -11,6 +11,7 @@ const Header: React.FC = () => {
         case Role.Manager: return 'مدير';
         case Role.Doctor: return 'طبيب';
         case Role.Reception: return 'موظف استقبال';
+        case Role.Accountant: return 'محاسب';
         default: return 'مستخدم';
     }
   }

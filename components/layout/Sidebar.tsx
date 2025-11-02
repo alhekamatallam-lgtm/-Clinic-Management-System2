@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import { Role, View } from '../../types';
-import { ChartBarIcon, UserGroupIcon, ClipboardDocumentListIcon, UsersIcon, BuildingOffice2Icon, DocumentChartBarIcon, PresentationChartLineIcon, BeakerIcon, QueueListIcon, CurrencyDollarIcon, HeartIcon, ChevronDownIcon, Cog6ToothIcon, BookOpenIcon, LightBulbIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, UserGroupIcon, ClipboardDocumentListIcon, UsersIcon, BuildingOffice2Icon, DocumentChartBarIcon, PresentationChartLineIcon, BeakerIcon, QueueListIcon, CurrencyDollarIcon, HeartIcon, ChevronDownIcon, Cog6ToothIcon, BookOpenIcon, LightBulbIcon, ReceiptRefundIcon } from '@heroicons/react/24/outline';
 
 const Sidebar: React.FC = () => {
     const { user, currentView, setView, isSidebarOpen } = useApp();
@@ -17,28 +17,29 @@ const Sidebar: React.FC = () => {
     if (!user) return null;
 
     const navItems = [
-        { view: 'dashboard', label: 'لوحة التحكم', icon: PresentationChartLineIcon, roles: [Role.Reception, Role.Doctor, Role.Manager] },
-        { view: 'queue', label: 'شاشة الانتظار', icon: QueueListIcon, roles: [Role.Reception, Role.Doctor, Role.Manager], color: 'text-amber-400' },
-        { view: 'patients', label: 'المرضى', icon: UserGroupIcon, roles: [Role.Reception, Role.Manager] },
-        { view: 'visits', label: 'الزيارات', icon: ClipboardDocumentListIcon, roles: [Role.Reception, Role.Doctor, Role.Manager] },
-        { view: 'revenues', label: 'الإيرادات', icon: CurrencyDollarIcon, roles: [Role.Reception, Role.Manager] },
+        { view: 'dashboard', label: 'لوحة التحكم', icon: PresentationChartLineIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
+        { view: 'queue', label: 'شاشة الانتظار', icon: QueueListIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant], color: 'text-amber-400' },
+        { view: 'patients', label: 'المرضى', icon: UserGroupIcon, roles: [Role.Reception, Role.Manager, Role.Accountant] },
+        { view: 'visits', label: 'الزيارات', icon: ClipboardDocumentListIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
+        { view: 'revenues', label: 'الإيرادات', icon: CurrencyDollarIcon, roles: [Role.Reception, Role.Manager, Role.Accountant] },
+        { view: 'disbursements', label: 'المصروفات', icon: ReceiptRefundIcon, roles: [Role.Manager, Role.Reception, Role.Accountant] },
         { view: 'diagnosis', label: 'التشخيص', icon: BeakerIcon, roles: [Role.Doctor, Role.Manager] },
         {
             id: 'reports-group',
             label: 'التقارير',
             icon: DocumentChartBarIcon,
-            roles: [Role.Reception, Role.Doctor, Role.Manager],
+            roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant],
             subItems: [
-                { view: 'reports', label: 'تقارير الإيرادات', roles: [Role.Reception, Role.Doctor, Role.Manager] },
-                { view: 'daily-clinic-report', label: 'التقرير اليومي للعيادات', roles: [Role.Reception, Role.Doctor, Role.Manager] },
-                { view: 'medical-report', label: 'التقارير الطبية', roles: [Role.Reception, Role.Doctor, Role.Manager] },
+                { view: 'reports', label: 'تقارير الإيرادات', roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
+                { view: 'daily-clinic-report', label: 'التقرير اليومي للعيادات', roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
+                { view: 'medical-report', label: 'التقارير الطبية', roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
             ]
         },
         { view: 'users', label: 'المستخدمين', icon: UsersIcon, roles: [Role.Manager] },
         { view: 'clinics', label: 'العيادات', icon: BuildingOffice2Icon, roles: [Role.Manager] },
         { view: 'doctors', label: 'الأطباء', icon: HeartIcon, roles: [Role.Manager] },
-        { view: 'documentation', label: 'الوثائق', icon: BookOpenIcon, roles: [Role.Reception, Role.Doctor, Role.Manager] },
-        { view: 'optimization', label: 'تحسينات واقتراحات', icon: LightBulbIcon, roles: [Role.Reception, Role.Doctor, Role.Manager], color: 'text-orange-400' },
+        { view: 'documentation', label: 'الوثائق', icon: BookOpenIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
+        { view: 'optimization', label: 'تحسينات واقتراحات', icon: LightBulbIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant], color: 'text-orange-400' },
         { view: 'settings', label: 'الإعدادات', icon: Cog6ToothIcon, roles: [Role.Manager] },
     ];
 

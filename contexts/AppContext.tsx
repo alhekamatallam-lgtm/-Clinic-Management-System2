@@ -1,8 +1,8 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode, useRef } from 'react';
-import { Patient, Visit, Diagnosis, User, Clinic, Revenue, Role, View, VisitStatus, VisitType, Doctor, Optimization } from '../types';
+import { Patient, Visit, Diagnosis, User, Clinic, Revenue, Role, View, VisitStatus, VisitType, Doctor, Optimization, Disbursement, DisbursementStatus, DisbursementType, PaymentVoucher, PaymentVoucherStatus, PaymentMethod } from '../types';
 
 // The API URL provided by the user.
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyfeigTybRITqPkWkc7IU1NJ79jz8ulWQtIOxttTrCwcaZRS-mThsbf9k_1LEiOR6nG/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSSTI-9CZ6oq1q3jkbv8T3mav94cJbXSA1qYvqh9khLcwPhmROz_k4saNEKMhirf4E/exec"; 
 
 // Backend column mapping, used to parse array responses from the API
 const COLUMN_MAPPING = {
@@ -15,6 +15,7 @@ const COLUMN_MAPPING = {
     Clinics: ['clinic_id', 'clinic_name', 'doctor_id', 'doctor_name', 'max_patients_per_day', 'price_first_visit', 'price_followup', 'shift', 'notes'],
     Settings: ['logo', 'stamp', 'signature'],
     Optimization: ['optimization_id', 'user', 'name', 'page', 'optimize'],
+    // Disbursement & PaymentVoucher mappings are now handled manually in fetchData to align with Arabic keys from the API.
 };
 
 // Helper function to format dates consistently to 'YYYY-MM-DD' in the local timezone.
@@ -72,6 +73,8 @@ interface AppContextType {
     revenues: Revenue[];
     doctors: Doctor[];
     optimizations: Optimization[];
+    disbursements: Disbursement[];
+    paymentVouchers: PaymentVoucher[];
     addPatient: (patient: Omit<Patient, 'patient_id'>) => Promise<void>;
     addVisit: (visit: Omit<Visit, 'visit_id' | 'queue_number' | 'status'>) => Promise<Visit>;
     addDiagnosis: (diagnosis: Omit<Diagnosis, 'diagnosis_id'>) => Promise<void>;
@@ -79,6 +82,10 @@ interface AppContextType {
     addDoctor: (doctor: Omit<Doctor, 'doctor_id'>) => Promise<void>;
     addClinic: (clinic: Omit<Clinic, 'clinic_id' | 'doctor_name'>) => Promise<void>;
     addOptimization: (suggestion: Omit<Optimization, 'optimization_id'>) => Promise<void>;
+    addDisbursement: (disbursement: Omit<Disbursement, 'disbursement_id' | 'status'>) => Promise<void>;
+    updateDisbursementStatus: (disbursementId: number, status: DisbursementStatus) => Promise<void>;
+    addPaymentVoucher: (voucher: Omit<PaymentVoucher, 'voucher_id' | 'status'>) => Promise<void>;
+    updatePaymentVoucherStatus: (voucherId: number, status: PaymentVoucherStatus) => Promise<void>;
     updateClinic: (clinicId: number, clinicData: Partial<Omit<Clinic, 'clinic_id'>>) => Promise<void>;
     deleteClinic: (clinicId: number) => Promise<void>;
     updateVisitStatus: (visitId: number, status: VisitStatus) => void; 
@@ -122,7 +129,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
     
     // Settings state, loaded from backend
-    const [settings, setSettings] = useState<{ [key: string]: string }>({});
+    const [settings, setSettings] = useState<{ [key: string]: string }>(() => {
+        try {
+            const storedSettings = localStorage.getItem('clinicSettings');
+            return storedSettings ? JSON.parse(storedSettings) : {};
+        } catch (error) {
+            console.error('Failed to parse settings from localStorage', error);
+            return {};
+        }
+    });
     const [reportTargetVisitId, setReportTargetVisitIdState] = useState<number | null>(null);
 
     const toggleSidebar = () => {
@@ -138,6 +153,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [revenues, setRevenues] = useState<Revenue[]>([]);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [optimizations, setOptimizations] = useState<Optimization[]>([]);
+    const [disbursements, setDisbursements] = useState<Disbursement[]>([]);
+    const [paymentVouchers, setPaymentVouchers] = useState<PaymentVoucher[]>([]);
+
 
     // API states
     const [loading, setLoading] = useState(true);
@@ -204,10 +222,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                     ...v,
                     visit_date: formatDateToLocalYYYYMMDD(v.visit_date),
                 }));
-                
+                const rawDisbursements = result.data.Disbursement || [];
+                const processedDisbursements = rawDisbursements.map((d: any) => ({
+                    disbursement_id: Number(d['رقم الطلب']),
+                    date: formatDateToLocalYYYYMMDD(d['التاريخ']),
+                    disbursement_type: d['نوع الصرف'] as DisbursementType,
+                    amount: Number(d['المبلغ']),
+                    beneficiary: d['المستفيد'],
+                    purpose: d['الغرض من الصرف'],
+                    status: d['الحالة'] as DisbursementStatus,
+                }));
+                const rawVouchers = result.data['Payment Voucher'] || [];
+                const processedVouchers = rawVouchers.map((v: any) => ({
+                    voucher_id: Number(v['رقم السند']),
+                    request_id: Number(v['رقم الطلب']),
+                    date: formatDateToLocalYYYYMMDD(v['التاريخ']),
+                    disbursement_type: v['نوع الصرف'] as DisbursementType,
+                    amount: Number(v['المبلغ']),
+                    beneficiary: v['المستفيد'],
+                    purpose: v['مقابل / الغرض من الصرف'],
+                    payment_method: v['طريقة الصرف'] as PaymentMethod,
+                    status: v['الحالة'] as PaymentVoucherStatus,
+                }));
+
                 // Process Settings - new structure is an array with a single object
                 const settingsData = result.data.Settings || [];
                 const settingsMap = settingsData.length > 0 ? settingsData[0] : {};
+                localStorage.setItem('clinicSettings', JSON.stringify(settingsMap));
                 setSettings(settingsMap);
 
                 setPatients(result.data.Patients || []);
@@ -218,6 +259,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 setRevenues(processedRevenues);
                 setDoctors(result.data.Doctors || []);
                 setOptimizations(result.data.Optimization || []);
+                setDisbursements(processedDisbursements);
+                setPaymentVouchers(processedVouchers);
             } else {
                 throw new Error(result.message || "Failed to fetch data.");
             }
@@ -339,6 +382,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             setSettings(newSettings); // Optimistic update
             const result = await postData('Settings', { action: 'update', data: newSettings });
             if (result.success) {
+                localStorage.setItem('clinicSettings', JSON.stringify(newSettings));
                 showNotification('تم حفظ الإعدادات بنجاح', 'success');
                 await fetchData(true); // Re-sync with backend
             } else {
@@ -602,6 +646,106 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
     };
 
+    const addDisbursement = async (disbursementData: Omit<Disbursement, 'disbursement_id' | 'status'>) => {
+        setIsAdding(true);
+        try {
+            const dataWithStatus = { ...disbursementData, status: DisbursementStatus.Pending };
+            const arabicKeyData = {
+                "التاريخ": dataWithStatus.date,
+                "نوع الصرف": dataWithStatus.disbursement_type,
+                "المبلغ": dataWithStatus.amount,
+                "المستفيد": dataWithStatus.beneficiary,
+                "الغرض من الصرف": dataWithStatus.purpose,
+                "الحالة": dataWithStatus.status,
+            };
+
+            const result = await postData('Disbursement', arabicKeyData);
+            if (result.success) {
+                showNotification(result.message || 'تمت إضافة طلب الصرف بنجاح', 'success');
+                await fetchData(true);
+            } else {
+                showNotification(result.message || 'فشلت إضافة طلب الصرف', 'error');
+            }
+        } catch (e: any) {
+            showNotification(e.message || 'فشلت إضافة طلب الصرف', 'error');
+            console.error("Failed to add disbursement:", e);
+        } finally {
+            setIsAdding(false);
+        }
+    };
+
+    const updateDisbursementStatus = async (disbursementId: number, status: DisbursementStatus) => {
+        try {
+            const dataToSend = {
+                action: 'update',
+                "رقم الطلب": disbursementId,
+                "الحالة": status,
+            };
+            const result = await postData('Disbursement', dataToSend);
+            if (result.success) {
+                showNotification(result.message || 'تم تحديث حالة الطلب بنجاح', 'success');
+                await fetchData(true);
+            } else {
+                 showNotification(result.message || 'فشل تحديث حالة الطلب', 'error');
+            }
+        } catch (e: any)
+        {
+            showNotification(e.message || 'فشل تحديث حالة الطلب', 'error');
+            console.error("Failed to update disbursement status:", e);
+        }
+    };
+
+    const addPaymentVoucher = async (voucherData: Omit<PaymentVoucher, 'voucher_id' | 'status'>) => {
+        setIsAdding(true);
+        try {
+            const dataWithStatus = { ...voucherData, status: PaymentVoucherStatus.Pending };
+            const arabicKeyData = {
+                "رقم الطلب": dataWithStatus.request_id,
+                "التاريخ": dataWithStatus.date,
+                "نوع الصرف": dataWithStatus.disbursement_type,
+                "المبلغ": dataWithStatus.amount,
+                "المستفيد": dataWithStatus.beneficiary,
+                "مقابل / الغرض من الصرف": dataWithStatus.purpose,
+                "طريقة الصرف": dataWithStatus.payment_method,
+                "الحالة": dataWithStatus.status,
+            };
+
+            const result = await postData('Payment Voucher', arabicKeyData);
+            if (result.success) {
+                showNotification(result.message || 'تمت إضافة سند الصرف بنجاح', 'success');
+                await fetchData(true);
+            } else {
+                showNotification(result.message || 'فشلت إضافة سند الصرف', 'error');
+            }
+        } catch (e: any) {
+            showNotification(e.message || 'فشلت إضافة سند الصرف', 'error');
+            console.error("Failed to add payment voucher:", e);
+        } finally {
+            setIsAdding(false);
+        }
+    };
+
+    const updatePaymentVoucherStatus = async (voucherId: number, status: PaymentVoucherStatus) => {
+        try {
+            const dataToSend = {
+                action: 'update',
+                "رقم السند": voucherId,
+                "الحالة": status,
+            };
+            const result = await postData('Payment Voucher', dataToSend);
+            if (result.success) {
+                showNotification(result.message || 'تم اعتماد سند الصرف بنجاح', 'success');
+                await fetchData(true);
+            } else {
+                 showNotification(result.message || 'فشل اعتماد سند الصرف', 'error');
+            }
+        } catch (e: any)
+        {
+            showNotification(e.message || 'فشل اعتماد سند الصرف', 'error');
+            console.error("Failed to update payment voucher status:", e);
+        }
+    };
+
     const updateClinic = async (clinicId: number, clinicData: Partial<Omit<Clinic, 'clinic_id'>>) => {
         try {
             const dataToSend = {
@@ -689,10 +833,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     const value = {
         user, login, logout, currentView, setView,
-        patients, visits, diagnoses, users, clinics, revenues, doctors, optimizations,
+        patients, visits, diagnoses, users, clinics, revenues, doctors, optimizations, disbursements, paymentVouchers,
         addPatient, addVisit, addDiagnosis, addManualRevenue, updateVisitStatus,
         addUser, updateUser, addDoctor, deleteUser,
         addClinic, updateClinic, deleteClinic, addOptimization,
+        addDisbursement, updateDisbursementStatus,
+        addPaymentVoucher, updatePaymentVoucherStatus,
         isAdding, isAddingVisit,
         loading, isSyncing, error,
         notification, hideNotification, showNotification,

@@ -18,10 +18,11 @@ import DailyClinicReport from './pages/DailyClinicReport';
 import Settings from './pages/Settings';
 import Documentation from './pages/Documentation';
 import Optimization from './pages/Optimization';
+import Disbursements from './pages/Disbursements';
 import { Role } from './types';
 
 const App: React.FC = () => {
-  const { user, currentView, loading, error } = useApp();
+  const { user, currentView, loading, error, clinicLogo } = useApp();
 
   const renderView = () => {
     switch (currentView) {
@@ -51,6 +52,8 @@ const App: React.FC = () => {
         return <ManualRevenue />;
       case 'revenues':
         return <Revenues />;
+      case 'disbursements':
+        return <Disbursements />;
       case 'settings':
         return <Settings />;
       case 'documentation':
@@ -66,7 +69,11 @@ const App: React.FC = () => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
             <div className="text-center">
-                <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-teal-500 mx-auto"></div>
+                {clinicLogo ? (
+                    <img src={clinicLogo} alt="شعار المستوصف" className="mx-auto h-32 w-auto object-contain animate-pulse" />
+                ) : (
+                    <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-teal-500 mx-auto"></div>
+                )}
                 <h2 className="mt-4 text-xl font-semibold text-gray-700 dark:text-gray-300">جاري تحميل البيانات...</h2>
                 <p className="text-gray-500 dark:text-gray-400">يرجى الانتظار لحظات</p>
             </div>
