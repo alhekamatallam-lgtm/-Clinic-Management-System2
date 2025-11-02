@@ -19,6 +19,7 @@ import Settings from './pages/Settings';
 import Documentation from './pages/Documentation';
 import Optimization from './pages/Optimization';
 import Disbursements from './pages/Disbursements';
+import PaymentVouchers from './pages/PaymentVouchers';
 import { Role } from './types';
 
 const App: React.FC = () => {
@@ -54,6 +55,8 @@ const App: React.FC = () => {
         return <Revenues />;
       case 'disbursements':
         return <Disbursements />;
+      case 'payment-vouchers':
+        return <PaymentVouchers />;
       case 'settings':
         return <Settings />;
       case 'documentation':

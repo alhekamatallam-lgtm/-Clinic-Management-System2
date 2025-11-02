@@ -211,7 +211,7 @@ const Disbursements: React.FC = () => {
     return (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-teal-800 dark:text-teal-300">إدارة المصروفات</h1>
+                <h1 className="text-2xl font-bold text-teal-800 dark:text-teal-300">إدارة طلبات الصرف</h1>
                 <button 
                     onClick={handleOpenRequestModal}
                     className="flex items-center bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors"

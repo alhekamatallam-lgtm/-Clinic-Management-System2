@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import { Role, View } from '../../types';
-import { ChartBarIcon, UserGroupIcon, ClipboardDocumentListIcon, UsersIcon, BuildingOffice2Icon, DocumentChartBarIcon, PresentationChartLineIcon, BeakerIcon, QueueListIcon, CurrencyDollarIcon, HeartIcon, ChevronDownIcon, Cog6ToothIcon, BookOpenIcon, LightBulbIcon, ReceiptRefundIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, UserGroupIcon, ClipboardDocumentListIcon, UsersIcon, BuildingOffice2Icon, DocumentChartBarIcon, PresentationChartLineIcon, BeakerIcon, QueueListIcon, CurrencyDollarIcon, HeartIcon, ChevronDownIcon, Cog6ToothIcon, BookOpenIcon, LightBulbIcon, ReceiptRefundIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 
 const Sidebar: React.FC = () => {
     const { user, currentView, setView, isSidebarOpen } = useApp();
@@ -22,7 +22,8 @@ const Sidebar: React.FC = () => {
         { view: 'patients', label: 'المرضى', icon: UserGroupIcon, roles: [Role.Reception, Role.Manager, Role.Accountant] },
         { view: 'visits', label: 'الزيارات', icon: ClipboardDocumentListIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
         { view: 'revenues', label: 'الإيرادات', icon: CurrencyDollarIcon, roles: [Role.Reception, Role.Manager, Role.Accountant] },
-        { view: 'disbursements', label: 'المصروفات', icon: ReceiptRefundIcon, roles: [Role.Manager, Role.Reception, Role.Accountant] },
+        { view: 'disbursements', label: 'طلبات الصرف', icon: ReceiptRefundIcon, roles: [Role.Manager, Role.Reception, Role.Accountant] },
+        { view: 'payment-vouchers', label: 'سندات الصرف', icon: ClipboardDocumentCheckIcon, roles: [Role.Manager, Role.Accountant] },
         { view: 'diagnosis', label: 'التشخيص', icon: BeakerIcon, roles: [Role.Doctor, Role.Manager] },
         {
             id: 'reports-group',

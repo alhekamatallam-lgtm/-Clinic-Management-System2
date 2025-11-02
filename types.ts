@@ -169,6 +169,7 @@ export type View =
     | 'manual-revenue'
     | 'revenues'
     | 'disbursements'
+    | 'payment-vouchers'
     | 'settings'
     | 'documentation'
     | 'optimization';

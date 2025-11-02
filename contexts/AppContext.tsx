@@ -694,8 +694,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
             const payload = {
                 action: 'update',
-                key: { "رقم الطلب": disbursementId },
-                data: rowData,
+                ...rowData,
             };
 
             const result = await postData('Disbursement', payload);
@@ -763,8 +762,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             
             const payload = {
                 action: 'update',
-                key: { "رقم السند": voucherId },
-                data: rowData,
+                ...rowData,
             };
 
             const result = await postData('Payment Voucher', payload);
