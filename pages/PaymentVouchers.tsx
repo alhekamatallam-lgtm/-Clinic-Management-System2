@@ -1,15 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { PaymentVoucher, PaymentVoucherStatus, PaymentMethod, Disbursement, DisbursementStatus, Role } from '../types';
+import { PaymentVoucher, PaymentVoucherStatus, Role } from '../types';
+import { CheckCircleIcon, XCircleIcon, PrinterIcon, EyeIcon, ChevronRightIcon, ChevronLeftIcon } from '@heroicons/react/24/solid';
 import Modal from '../components/ui/Modal';
-import { PlusIcon, CheckCircleIcon, XCircleIcon, ChevronRightIcon, ChevronLeftIcon } from '@heroicons/react/24/solid';
-
-const getLocalYYYYMMDD = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
 
 const translateVoucherStatus = (status: PaymentVoucherStatus) => {
     switch (status) {
@@ -29,30 +22,85 @@ const getStatusColor = (status: PaymentVoucherStatus) => {
     }
 };
 
-const PaymentVouchers: React.FC = () => {
-    const { user, paymentVouchers, disbursements, addPaymentVoucher, updatePaymentVoucherStatus, isAdding } = useApp();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedDisbursement, setSelectedDisbursement] = useState<Disbursement | null>(null);
+// Printable Component
+const PrintableVoucher: React.FC<{ voucher: PaymentVoucher; logo: string | null; stamp: string | null; }> = ({ voucher, logo, stamp }) => {
+    return (
+        <div className="p-8 bg-white text-black font-serif">
+            <header className="flex justify-between items-center border-b-2 border-gray-800 pb-4 mb-8">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">سند صرف</h1>
+                    <p className="text-md text-gray-600">Payment Voucher</p>
+                </div>
+                {logo && <img src={logo} alt="شعار المستوصف" className="h-20 w-auto object-contain" />}
+            </header>
 
+            <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8 text-md">
+                <p><strong>رقم السند:</strong> {voucher.voucher_id}</p>
+                <p><strong>رقم الطلب:</strong> {voucher.request_id}</p>
+                <p><strong>التاريخ:</strong> {voucher.date}</p>
+                <p><strong>المبلغ:</strong> {voucher.amount.toLocaleString()} ريال</p>
+                <p className="col-span-2"><strong>المستفيد:</strong> {voucher.beneficiary}</p>
+                <p className="col-span-2"><strong>مقابل / الغرض من الصرف:</strong> {voucher.purpose}</p>
+                <p><strong>طريقة الصرف:</strong> {voucher.payment_method}</p>
+                <p><strong>الحالة:</strong> {translateVoucherStatus(voucher.status)}</p>
+                {voucher.notes && <p className="col-span-2"><strong>ملاحظات:</strong> {voucher.notes}</p>}
+            </div>
+
+            <footer className="pt-24 mt-16 border-t">
+                <div className="flex justify-between items-end">
+                    <div className="text-center w-1/3">
+                        <p className="font-bold mb-2">المحاسب</p>
+                        <p className="border-b-2 border-dotted border-gray-400 w-full h-12"></p>
+                    </div>
+                     <div className="text-center w-1/3">
+                        {stamp ? (
+                             <img src={stamp} alt="ختم المستوصف" className="h-24 mx-auto object-contain" />
+                        ) : (
+                             <div className="h-24 w-24 border-2 border-dashed rounded-full mx-auto flex items-center justify-center text-gray-400">
+                                <p className="text-xs">مكان الختم</p>
+                            </div>
+                        )}
+                    </div>
+                    <div className="text-center w-1/3">
+                        <p className="font-bold mb-2">المدير</p>
+                        <p className="border-b-2 border-dotted border-gray-400 w-full h-12"></p>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    );
+};
+
+const PaymentVouchers: React.FC = () => {
+    const { user, paymentVouchers, updatePaymentVoucherStatus, clinicLogo, clinicStamp } = useApp();
+    const [updatingStatus, setUpdatingStatus] = useState<number | null>(null);
+
+    // Print & Preview State
+    const [itemToPreview, setItemToPreview] = useState<PaymentVoucher | null>(null);
+    const [itemToPrint, setItemToPrint] = useState<PaymentVoucher | null>(null);
+    
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     
-    const initialFormState = {
-        payment_method: PaymentMethod.Cash,
-        notes: '',
-    };
-    const [formData, setFormData] = useState(initialFormState);
-
-    const approvedRequestsWithoutVoucher = useMemo(() => {
-        const voucherRequestIds = new Set(paymentVouchers.map(v => v.request_id));
-        return disbursements.filter(d => 
-            d.status === DisbursementStatus.Approved && !voucherRequestIds.has(d.disbursement_id)
-        );
-    }, [disbursements, paymentVouchers]);
+    // Print Effect
+    useEffect(() => {
+        if (itemToPrint) {
+            const timer = setTimeout(() => {
+                window.print();
+                setItemToPrint(null);
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [itemToPrint]);
 
     const sortedVouchers = useMemo(() => 
-        [...paymentVouchers].sort((a, b) => b.voucher_id - a.voucher_id), 
+        [...paymentVouchers].sort((a, b) => {
+             // Sort pending items first, then by ID descending
+            if (a.status === PaymentVoucherStatus.Pending && b.status !== PaymentVoucherStatus.Pending) return -1;
+            if (a.status !== PaymentVoucherStatus.Pending && b.status === PaymentVoucherStatus.Pending) return 1;
+            return b.request_id - a.request_id;
+        }), 
         [paymentVouchers]
     );
 
@@ -66,43 +114,10 @@ const PaymentVouchers: React.FC = () => {
         setCurrentPage(pageNumber);
     };
 
-    const handleOpenModal = (disbursement: Disbursement) => {
-        setSelectedDisbursement(disbursement);
-        setFormData(initialFormState);
-        setIsModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setSelectedDisbursement(null);
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedDisbursement) return;
-        await addPaymentVoucher({
-            request_id: selectedDisbursement.disbursement_id,
-            date: getLocalYYYYMMDD(new Date()),
-            disbursement_type: selectedDisbursement.disbursement_type,
-            amount: selectedDisbursement.amount,
-            beneficiary: selectedDisbursement.beneficiary,
-            purpose: selectedDisbursement.purpose,
-            payment_method: formData.payment_method,
-            notes: formData.notes,
-        });
-        handleCloseModal();
-    };
-
-    const handleStatusUpdate = (voucher: PaymentVoucher, status: PaymentVoucherStatus) => {
-        const actionText = status === PaymentVoucherStatus.Approved ? 'اعتماد' : 'رفض';
-        if (window.confirm(`هل أنت متأكد من ${actionText} سند الصرف للطلب رقم ${voucher.request_id}؟`)) {
-            updatePaymentVoucherStatus(voucher, status);
-        }
+    const handleStatusUpdate = async (voucher: PaymentVoucher, status: PaymentVoucherStatus) => {
+        setUpdatingStatus(voucher.request_id);
+        await updatePaymentVoucherStatus(voucher, status);
+        setUpdatingStatus(null);
     };
     
     const PaginationControls = () => {
@@ -127,102 +142,65 @@ const PaymentVouchers: React.FC = () => {
         );
     };
 
+    if (itemToPrint) {
+        return <PrintableVoucher voucher={itemToPrint} logo={clinicLogo} stamp={clinicStamp} />;
+    }
+
     return (
-        <div className="space-y-8">
-            { (user?.role === Role.Accountant || user?.role === Role.Manager) &&
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                    <h2 className="text-xl font-bold text-teal-800 dark:text-teal-300 mb-4">طلبات صرف معتمدة (جاهزة لإنشاء سند)</h2>
-                    {approvedRequestsWithoutVoucher.length > 0 ? (
-                        <ul className="space-y-3">
-                            {approvedRequestsWithoutVoucher.map(d => (
-                                <li key={d.disbursement_id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                    <div>
-                                        <p><strong>طلب رقم:</strong> {d.disbursement_id} &nbsp; <strong>لـ:</strong> {d.beneficiary}</p>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">{d.amount} ريال - {d.purpose}</p>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+            <h1 className="text-2xl font-bold text-teal-800 dark:text-teal-300 mb-6">سجل سندات الصرف</h1>
+             <div className="overflow-x-auto">
+                <table className="w-full text-right">
+                    <thead className="bg-gray-100 dark:bg-gray-700">
+                        <tr>
+                            {["# السند", "# الطلب", "التاريخ", "المستفيد", "المبلغ", "طريقة الصرف", "ملاحظات", "الحالة", "إجراء"].map(h =>
+                                <th key={h} className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">{h}</th>
+                            )}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {currentVouchers.map(v => (
+                            <tr key={`${v.request_id}-${v.voucher_id}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td className="p-3 text-sm">{v.voucher_id}</td>
+                                <td className="p-3 text-sm">{v.request_id}</td>
+                                <td className="p-3 text-sm">{v.date}</td>
+                                <td className="p-3 text-sm">{v.beneficiary}</td>
+                                <td className="p-3 text-sm">{v.amount} ريال</td>
+                                <td className="p-3 text-sm">{v.payment_method}</td>
+                                <td className="p-3 text-sm">{v.notes || '-'}</td>
+                                <td className="p-3 text-sm">
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(v.status)}`}>
+                                        {translateVoucherStatus(v.status)}
+                                    </span>
+                                </td>
+                                <td className="p-3">
+                                    <div className="flex items-center gap-1">
+                                        {user?.role === Role.Manager && v.status === PaymentVoucherStatus.Pending && (
+                                            <>
+                                                <button onClick={() => handleStatusUpdate(v, PaymentVoucherStatus.Approved)} disabled={updatingStatus === v.request_id} className="p-2 text-green-600 hover:bg-green-100 rounded-full disabled:opacity-50" title="اعتماد"> <CheckCircleIcon className="h-5 w-5" /> </button>
+                                                <button onClick={() => handleStatusUpdate(v, PaymentVoucherStatus.Rejected)} disabled={updatingStatus === v.request_id} className="p-2 text-red-600 hover:bg-red-100 rounded-full disabled:opacity-50" title="رفض"> <XCircleIcon className="h-5 w-5" /> </button>
+                                            </>
+                                        )}
+                                        <button onClick={() => setItemToPreview(v)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full"><EyeIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => setItemToPrint(v)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full"><PrinterIcon className="h-5 w-5" /></button>
                                     </div>
-                                    <button onClick={() => handleOpenModal(d)} className="flex items-center bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600">
-                                        <PlusIcon className="h-4 w-4 ml-1" />
-                                        إنشاء سند
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-center text-gray-500 dark:text-gray-400">لا توجد طلبات صرف معتمدة حالياً.</p>
-                    )}
-                </div>
-            }
-
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                <h1 className="text-2xl font-bold text-teal-800 dark:text-teal-300 mb-6">سجل سندات الصرف</h1>
-                 <div className="overflow-x-auto">
-                    <table className="w-full text-right">
-                        <thead className="bg-gray-100 dark:bg-gray-700">
-                            <tr>
-                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">رقم السند</th>
-                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">رقم الطلب</th>
-                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">التاريخ</th>
-                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">المستفيد</th>
-                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">المبلغ</th>
-                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">طريقة الصرف</th>
-                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">الحالة</th>
-                                {user?.role === Role.Manager && <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">إجراء</th>}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {currentVouchers.map(v => (
-                                <tr key={v.voucher_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{v.voucher_id}</td>
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{v.request_id}</td>
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{v.date}</td>
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{v.beneficiary}</td>
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{v.amount} ريال</td>
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{v.payment_method}</td>
-                                    <td className="p-3 text-sm">
-                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(v.status)}`}>
-                                            {translateVoucherStatus(v.status)}
-                                        </span>
-                                    </td>
-                                    {user?.role === Role.Manager && (
-                                        <td className="p-3">
-                                            {v.status === PaymentVoucherStatus.Pending && (
-                                                <div className="flex items-center gap-2">
-                                                    <button onClick={() => handleStatusUpdate(v, PaymentVoucherStatus.Approved)} className="p-2 text-green-600 hover:bg-green-100 rounded-full dark:hover:bg-green-900" title="اعتماد">
-                                                        <CheckCircleIcon className="h-5 w-5" />
-                                                    </button>
-                                                    <button onClick={() => handleStatusUpdate(v, PaymentVoucherStatus.Rejected)} className="p-2 text-red-600 hover:bg-red-100 rounded-full dark:hover:bg-red-900" title="رفض">
-                                                        <XCircleIcon className="h-5 w-5" />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </td>
-                                    )}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                <PaginationControls />
+                        ))}
+                    </tbody>
+                </table>
             </div>
-
-            <Modal title={`إنشاء سند صرف للطلب #${selectedDisbursement?.disbursement_id}`} isOpen={isModalOpen} onClose={handleCloseModal}>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                        <p><strong>المبلغ:</strong> {selectedDisbursement?.amount} ريال</p>
-                        <p><strong>المستفيد:</strong> {selectedDisbursement?.beneficiary}</p>
-                        <p><strong>الغرض:</strong> {selectedDisbursement?.purpose}</p>
+            <PaginationControls />
+            
+            {itemToPreview && (
+                <Modal isOpen={!!itemToPreview} onClose={() => setItemToPreview(null)} title="معاينة سند الصرف">
+                    <PrintableVoucher voucher={itemToPreview} logo={clinicLogo} stamp={clinicStamp} />
+                    <div className="mt-4 flex justify-end gap-2 no-print">
+                        <button onClick={() => setItemToPreview(null)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">إغلاق</button>
+                        <button onClick={() => { setItemToPrint(itemToPreview); setItemToPreview(null); }} className="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600">طباعة</button>
                     </div>
-                    <select name="payment_method" value={formData.payment_method} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white bg-white">
-                        <option value={PaymentMethod.Cash}>نقدي</option>
-                        <option value={PaymentMethod.BankTransfer}>تحويل بنكي</option>
-                        <option value={PaymentMethod.Cheque}>شيك</option>
-                    </select>
-                    <textarea name="notes" placeholder="ملاحظات (اختياري)" value={formData.notes} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                    <button type="submit" className="w-full bg-teal-500 text-white p-2 rounded hover:bg-teal-600 disabled:bg-gray-400" disabled={isAdding}>
-                        {isAdding ? 'جاري الإنشاء...' : 'إنشاء السند'}
-                    </button>
-                </form>
-            </Modal>
+                </Modal>
+            )}
         </div>
     );
 };
