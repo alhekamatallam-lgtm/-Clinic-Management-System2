@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Disbursement, DisbursementStatus, DisbursementType, Role, PaymentVoucherStatus, PaymentMethod } from '../types';
 import Modal from '../components/ui/Modal';
-import { PlusIcon, ChevronRightIcon, ChevronLeftIcon, CheckBadgeIcon, ClockIcon, DocumentPlusIcon, XCircleIcon, PrinterIcon, ArrowUturnLeftIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, ChevronRightIcon, ChevronLeftIcon, CheckBadgeIcon, ClockIcon, DocumentPlusIcon, XCircleIcon, PrinterIcon, ArrowUturnLeftIcon, ChevronDownIcon, EyeIcon } from '@heroicons/react/24/solid';
 
 // Helper to get 'YYYY-MM-DD' from a Date object, respecting local timezone.
 const getLocalYYYYMMDD = (date: Date): string => {
@@ -13,19 +13,13 @@ const getLocalYYYYMMDD = (date: Date): string => {
 };
 
 const Disbursements: React.FC = () => {
-    const { user, disbursements, paymentVouchers, addDisbursement, updateDisbursementStatus, addPaymentVoucher, isAdding, clinicLogo } = useApp();
+    const { user, disbursements, paymentVouchers, addDisbursement, updateDisbursementStatus, addPaymentVoucher, isAdding, clinicLogo, clinicStamp } = useApp();
     const [isRequestModalOpen, setRequestModalOpen] = useState(false);
     const [isVoucherModalOpen, setVoucherModalOpen] = useState(false);
     const [selectedDisbursement, setSelectedDisbursement] = useState<Disbursement | null>(null);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
-    const [printingRequest, setPrintingRequest] = useState<Disbursement | null>(null);
+    const [previewRequest, setPreviewRequest] = useState<Disbursement | null>(null);
     const [isArchiveOpen, setIsArchiveOpen] = useState(false);
-
-    useEffect(() => {
-        if (printingRequest) {
-            window.print();
-        }
-    }, [printingRequest]);
 
     const today = getLocalYYYYMMDD(new Date());
 
@@ -153,8 +147,24 @@ const Disbursements: React.FC = () => {
     };
     
     const handlePrintRequest = (request: Disbursement) => {
-        setPrintingRequest(request);
+        setPreviewRequest(request);
+        setTimeout(() => {
+            window.print();
+        }, 100);
     };
+    
+    const handlePreviewRequest = (request: Disbursement) => {
+        setPreviewRequest(request);
+    };
+    
+    useEffect(() => {
+        if (previewRequest) {
+            const timer = setTimeout(() => {
+                // This ensures the state update has rendered before we attempt to print.
+            }, 10);
+            return () => clearTimeout(timer);
+        }
+    }, [previewRequest]);
     
     const PaginationControls = () => {
         if (totalPages <= 1) return null;
@@ -230,23 +240,38 @@ const Disbursements: React.FC = () => {
                 <p><strong>نوع الصرف:</strong> {request.disbursement_type}</p>
                 <p className="col-span-2"><strong>المبلغ:</strong> {request.amount.toFixed(2)} ريال</p>
                 <p className="col-span-2"><strong>الغرض من الصرف:</strong> {request.purpose}</p>
+                <p className="col-span-2 font-bold"><strong>الحالة:</strong> {request.status}</p>
             </div>
             <footer className="pt-24">
-                <div className="flex justify-around items-end">
-                    <div className="text-center w-1/2">
+                <div className="flex justify-between items-end">
+                    <div className="text-center w-1/3">
                         <p className="font-bold mb-12">صاحب الطلب</p>
-                        <p className="border-t-2 border-dotted border-gray-400 w-48 mx-auto"></p>
+                        <p className="border-t-2 border-dotted border-gray-400 w-40 mx-auto"></p>
                     </div>
-                    <div className="text-center w-1/2">
+                    <div className="text-center w-1/3">
+                        <p className="font-bold mb-4">ختم المستوصف</p>
+                        {clinicStamp ? (
+                             <img src={clinicStamp} alt="ختم المستوصف" className="h-24 mx-auto object-contain" />
+                        ) : (
+                             <div className="h-24 w-24 border-2 border-dashed rounded-full mx-auto flex items-center justify-center text-gray-400">
+                                <p className="text-xs">مكان الختم</p>
+                            </div>
+                        )}
+                    </div>
+                    <div className="text-center w-1/3">
                         <p className="font-bold mb-12">المدير</p>
-                        <p className="border-t-2 border-dotted border-gray-400 w-48 mx-auto"></p>
+                        <p className="border-t-2 border-dotted border-gray-400 w-40 mx-auto"></p>
                     </div>
                 </div>
             </footer>
-            <div className="no-print mt-8 text-center">
-                <button onClick={onBack} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center mx-auto">
+            <div className="no-print mt-8 text-center flex justify-center items-center gap-4">
+                <button onClick={onBack} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center">
                     <ArrowUturnLeftIcon className="h-5 w-5 ml-2" />
                     عودة
+                </button>
+                <button onClick={() => window.print()} className="bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 flex items-center">
+                    <PrinterIcon className="h-5 w-5 ml-2" />
+                    طباعة
                 </button>
             </div>
         </div>
@@ -292,6 +317,9 @@ const Disbursements: React.FC = () => {
                                                         <DocumentPlusIcon className="h-4 w-4 ml-1" /> إنشاء سند
                                                     </button>
                                                 )}
+                                                <button onClick={() => handlePreviewRequest(item)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full dark:hover:bg-gray-600" title="معاينة الطلب">
+                                                    <EyeIcon className="h-5 w-5" />
+                                                </button>
                                                 <button onClick={() => handlePrintRequest(item)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full dark:hover:bg-gray-600" title="طباعة الطلب">
                                                     <PrinterIcon className="h-5 w-5" />
                                                 </button>
@@ -307,8 +335,8 @@ const Disbursements: React.FC = () => {
         </div>
     );
 
-    if (printingRequest) {
-        return <PrintableDisbursementRequest request={printingRequest} onBack={() => setPrintingRequest(null)} />;
+    if (previewRequest) {
+        return <PrintableDisbursementRequest request={previewRequest} onBack={() => setPreviewRequest(null)} />;
     }
 
     return (
@@ -369,6 +397,9 @@ const Disbursements: React.FC = () => {
                                         </div>
                                         <div className="flex items-center gap-2">
                                              {getStatusChip(statusText, statusColor)}
+                                             <button onClick={() => handlePreviewRequest(item)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full dark:hover:bg-gray-600" title="معاينة الطلب">
+                                                <EyeIcon className="h-5 w-5" />
+                                            </button>
                                              <button onClick={() => handlePrintRequest(item)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full dark:hover:bg-gray-600" title="طباعة الطلب">
                                                 <PrinterIcon className="h-5 w-5" />
                                             </button>

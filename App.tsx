@@ -20,6 +20,7 @@ import Documentation from './pages/Documentation';
 import Optimization from './pages/Optimization';
 import Disbursements from './pages/Disbursements';
 import PaymentVouchers from './pages/PaymentVouchers';
+import DisbursementsReport from './pages/DisbursementsReport';
 import { Role } from './types';
 
 const App: React.FC = () => {
@@ -47,6 +48,8 @@ const App: React.FC = () => {
         return <MedicalReport />;
       case 'daily-clinic-report':
         return <DailyClinicReport />;
+      case 'disbursements-report':
+        return <DisbursementsReport />;
       case 'queue':
         return <Queue />;
       case 'manual-revenue':

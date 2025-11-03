@@ -166,6 +166,7 @@ export type View =
     | 'reports'
     | 'medical-report'
     | 'daily-clinic-report'
+    | 'disbursements-report'
     | 'queue'
     | 'manual-revenue'
     | 'revenues'

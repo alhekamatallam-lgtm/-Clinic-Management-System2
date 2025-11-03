@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import { Role, View } from '../../types';
-import { ChartBarIcon, UserGroupIcon, ClipboardDocumentListIcon, UsersIcon, BuildingOffice2Icon, DocumentChartBarIcon, PresentationChartLineIcon, BeakerIcon, QueueListIcon, CurrencyDollarIcon, HeartIcon, ChevronDownIcon, Cog6ToothIcon, BookOpenIcon, LightBulbIcon, ReceiptRefundIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, UserGroupIcon, ClipboardDocumentListIcon, UsersIcon, BuildingOffice2Icon, DocumentChartBarIcon, PresentationChartLineIcon, BeakerIcon, QueueListIcon, HeartIcon, ChevronDownIcon, Cog6ToothIcon, BookOpenIcon, LightBulbIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 
 const Sidebar: React.FC = () => {
     const { user, currentView, setView, isSidebarOpen } = useApp();
     const [isReportsOpen, setIsReportsOpen] = useState(false);
+    const [isFinancialsOpen, setIsFinancialsOpen] = useState(false);
 
     useEffect(() => {
-        const reportViews: View[] = ['reports', 'daily-clinic-report', 'medical-report'];
+        const reportViews: View[] = ['reports', 'daily-clinic-report', 'medical-report', 'disbursements-report'];
         if (reportViews.includes(currentView)) {
             setIsReportsOpen(true);
+        }
+        const financialViews: View[] = ['revenues', 'disbursements', 'payment-vouchers'];
+        if (financialViews.includes(currentView)) {
+            setIsFinancialsOpen(true);
         }
     }, [currentView]);
 
@@ -21,9 +26,17 @@ const Sidebar: React.FC = () => {
         { view: 'queue', label: 'شاشة الانتظار', icon: QueueListIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant], color: 'text-amber-400' },
         { view: 'patients', label: 'المرضى', icon: UserGroupIcon, roles: [Role.Reception, Role.Manager, Role.Accountant] },
         { view: 'visits', label: 'الزيارات', icon: ClipboardDocumentListIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
-        { view: 'revenues', label: 'الإيرادات', icon: CurrencyDollarIcon, roles: [Role.Reception, Role.Manager, Role.Accountant] },
-        { view: 'disbursements', label: 'طلبات الصرف', icon: ReceiptRefundIcon, roles: [Role.Manager, Role.Reception, Role.Accountant] },
-        { view: 'payment-vouchers', label: 'سندات الصرف', icon: ClipboardDocumentCheckIcon, roles: [Role.Manager, Role.Accountant] },
+        {
+            id: 'financials-group',
+            label: 'الإدارة المالية',
+            icon: BanknotesIcon,
+            roles: [Role.Reception, Role.Manager, Role.Accountant],
+            subItems: [
+                { view: 'revenues', label: 'الإيرادات', roles: [Role.Reception, Role.Manager, Role.Accountant] },
+                { view: 'disbursements', label: 'طلبات الصرف', roles: [Role.Manager, Role.Reception, Role.Accountant] },
+                { view: 'payment-vouchers', label: 'سندات الصرف', roles: [Role.Manager, Role.Accountant] },
+            ]
+        },
         { view: 'diagnosis', label: 'التشخيص', icon: BeakerIcon, roles: [Role.Doctor, Role.Manager] },
         {
             id: 'reports-group',
@@ -32,6 +45,7 @@ const Sidebar: React.FC = () => {
             roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant],
             subItems: [
                 { view: 'reports', label: 'تقارير الإيرادات', roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
+                { view: 'disbursements-report', label: 'تقرير المصروفات', roles: [Role.Reception, Role.Manager, Role.Accountant] },
                 { view: 'daily-clinic-report', label: 'التقرير اليومي للعيادات', roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
                 { view: 'medical-report', label: 'التقارير الطبية', roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
             ]
@@ -58,22 +72,29 @@ const Sidebar: React.FC = () => {
             <nav className="flex-1 overflow-y-auto pb-4 min-h-0">
                 <ul className="space-y-2">
                     {filteredNavItems.map(item => {
-                        // Group with sub-items (Reports)
+                        // Group with sub-items (Reports or Financials)
                         if ('subItems' in item && item.subItems) {
                             const isGroupActive = item.subItems.some(sub => sub.view === currentView);
+                            const isOpen = item.id === 'reports-group' ? isReportsOpen : item.id === 'financials-group' ? isFinancialsOpen : false;
+
+                            const toggleOpen = () => {
+                                if (item.id === 'reports-group') setIsReportsOpen(prev => !prev);
+                                if (item.id === 'financials-group') setIsFinancialsOpen(prev => !prev);
+                            };
+
                             return (
                                 <li key={item.id}>
                                     <button
-                                        onClick={() => isSidebarOpen && setIsReportsOpen(!isReportsOpen)}
+                                        onClick={() => isSidebarOpen && toggleOpen()}
                                         className={`w-full flex items-center px-4 py-3 text-gray-100 hover:bg-teal-700 rounded-lg transition-colors duration-200 ${isGroupActive ? 'bg-teal-700 font-bold' : ''} ${!isSidebarOpen ? 'justify-center' : ''}`}
                                         title={!isSidebarOpen ? item.label : ''}
                                     >
                                         <item.icon className={`h-6 w-6 flex-shrink-0 ${isSidebarOpen ? 'ml-3' : ''}`} />
                                         {isSidebarOpen && <span className="flex-1 text-right">{item.label}</span>}
-                                        {isSidebarOpen && <ChevronDownIcon className={`h-5 w-5 transition-transform duration-200 ${isReportsOpen ? 'rotate-180' : ''}`} />}
+                                        {isSidebarOpen && <ChevronDownIcon className={`h-5 w-5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />}
                                     </button>
                                     {isSidebarOpen && (
-                                        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isReportsOpen ? 'max-h-40' : 'max-h-0'}`}>
+                                        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-40' : 'max-h-0'}`}>
                                             <ul className="pt-2 pr-6 space-y-2">
                                                 {item.subItems
                                                     .filter(subItem => subItem.roles.includes(user.role))

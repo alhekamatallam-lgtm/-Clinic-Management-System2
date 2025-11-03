@@ -1,19 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { PaymentVoucher, PaymentVoucherStatus, Role } from '../types';
-import { ChevronRightIcon, ChevronLeftIcon, CheckBadgeIcon, ClockIcon, XCircleIcon, PrinterIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/solid';
+import { ChevronRightIcon, ChevronLeftIcon, CheckBadgeIcon, ClockIcon, XCircleIcon, PrinterIcon, ArrowUturnLeftIcon, EyeIcon } from '@heroicons/react/24/solid';
 
 const PaymentVouchers: React.FC = () => {
-    const { user, paymentVouchers, updatePaymentVoucherStatus, clinicLogo } = useApp();
+    const { user, paymentVouchers, updatePaymentVoucherStatus, clinicLogo, clinicStamp } = useApp();
     
     const [updatingId, setUpdatingId] = useState<number | null>(null);
-    const [printingVoucher, setPrintingVoucher] = useState<PaymentVoucher | null>(null);
-
-    useEffect(() => {
-        if (printingVoucher) {
-            window.print();
-        }
-    }, [printingVoucher]);
+    const [previewVoucher, setPreviewVoucher] = useState<PaymentVoucher | null>(null);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -55,8 +49,25 @@ const PaymentVouchers: React.FC = () => {
     };
     
     const handlePrintVoucher = (voucher: PaymentVoucher) => {
-        setPrintingVoucher(voucher);
+        setPreviewVoucher(voucher);
+        setTimeout(() => {
+            window.print();
+        }, 100);
     };
+
+    const handlePreviewVoucher = (voucher: PaymentVoucher) => {
+        setPreviewVoucher(voucher);
+    };
+    
+    useEffect(() => {
+        if (previewVoucher) {
+             const timer = setTimeout(() => {
+                // This ensures the state update has rendered before we attempt to print.
+            }, 10);
+            return () => clearTimeout(timer);
+        }
+    }, [previewVoucher]);
+
     
     const getStatusChip = (status: PaymentVoucherStatus) => {
         switch (status) {
@@ -116,23 +127,38 @@ const PaymentVouchers: React.FC = () => {
                 <p><strong>طريقة الصرف:</strong> {voucher.payment_method}</p>
                 <p><strong>نوع الصرف:</strong> {voucher.disbursement_type}</p>
                 {voucher.notes && <p className="col-span-2"><strong>ملاحظات المحاسب:</strong> {voucher.notes}</p>}
+                <p className="col-span-2 font-bold"><strong>الحالة:</strong> {voucher.status}</p>
             </div>
             <footer className="pt-24">
-                <div className="flex justify-around items-end">
-                    <div className="text-center w-1/2">
+                <div className="flex justify-between items-end">
+                    <div className="text-center w-1/3">
                         <p className="font-bold mb-12">المحاسب</p>
-                        <p className="border-t-2 border-dotted border-gray-400 w-48 mx-auto"></p>
+                        <p className="border-t-2 border-dotted border-gray-400 w-40 mx-auto"></p>
                     </div>
-                    <div className="text-center w-1/2">
+                    <div className="text-center w-1/3">
+                        <p className="font-bold mb-4">ختم المستوصف</p>
+                        {clinicStamp ? (
+                             <img src={clinicStamp} alt="ختم المستوصف" className="h-24 mx-auto object-contain" />
+                        ) : (
+                             <div className="h-24 w-24 border-2 border-dashed rounded-full mx-auto flex items-center justify-center text-gray-400">
+                                <p className="text-xs">مكان الختم</p>
+                            </div>
+                        )}
+                    </div>
+                    <div className="text-center w-1/3">
                         <p className="font-bold mb-12">المدير</p>
-                        <p className="border-t-2 border-dotted border-gray-400 w-48 mx-auto"></p>
+                        <p className="border-t-2 border-dotted border-gray-400 w-40 mx-auto"></p>
                     </div>
                 </div>
             </footer>
-            <div className="no-print mt-8 text-center">
-                <button onClick={onBack} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center mx-auto">
+            <div className="no-print mt-8 text-center flex justify-center items-center gap-4">
+                <button onClick={onBack} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center">
                     <ArrowUturnLeftIcon className="h-5 w-5 ml-2" />
                     عودة
+                </button>
+                <button onClick={() => window.print()} className="bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 flex items-center">
+                    <PrinterIcon className="h-5 w-5 ml-2" />
+                    طباعة
                 </button>
             </div>
         </div>
@@ -160,8 +186,8 @@ const PaymentVouchers: React.FC = () => {
         );
     };
 
-    if (printingVoucher) {
-        return <PrintablePaymentVoucher voucher={printingVoucher} onBack={() => setPrintingVoucher(null)} />;
+    if (previewVoucher) {
+        return <PrintablePaymentVoucher voucher={previewVoucher} onBack={() => setPreviewVoucher(null)} />;
     }
 
     return (
@@ -205,6 +231,9 @@ const PaymentVouchers: React.FC = () => {
                                                         </button>
                                                     </>
                                                 )}
+                                                <button onClick={() => handlePreviewVoucher(item)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full dark:hover:bg-gray-600" title="معاينة السند">
+                                                    <EyeIcon className="h-5 w-5" />
+                                                </button>
                                                 <button onClick={() => handlePrintVoucher(item)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full dark:hover:bg-gray-600" title="طباعة السند">
                                                     <PrinterIcon className="h-5 w-5" />
                                                 </button>

@@ -59,7 +59,7 @@ const FeedbackButton: React.FC = () => {
         <>
             <button
                 onClick={handleOpenModal}
-                className="no-print fixed bottom-6 left-24 z-40 bg-amber-500 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-amber-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+                className="no-print fixed bottom-24 left-6 z-40 bg-amber-500 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-amber-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
                 title="إرسال اقتراح أو ملاحظة"
             >
                 <LightBulbIcon className="h-7 w-7" />
