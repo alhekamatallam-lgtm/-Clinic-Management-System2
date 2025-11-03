@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { PrinterIcon } from '@heroicons/react/24/solid';
-import { Role } from '../types';
+import { VisitType } from '../types';
 
 const getLocalYYYYMMDD = (date: Date): string => {
     const year = date.getFullYear();
@@ -11,137 +11,105 @@ const getLocalYYYYMMDD = (date: Date): string => {
 };
 
 const DailyClinicReport: React.FC = () => {
-    const { clinics, visits, revenues, user, doctors, clinicLogo } = useApp();
-    const [selectedDate, setSelectedDate] = useState<string>(getLocalYYYYMMDD(new Date()));
+    const { clinics, doctors, visits, revenues, clinicLogo } = useApp();
+    const [reportDate, setReportDate] = useState(getLocalYYYYMMDD(new Date()));
 
     const reportData = useMemo(() => {
-        const dailyVisits = visits.filter(v => v.visit_date === selectedDate);
-        const dailyRevenues = revenues.filter(r => r.date === selectedDate);
-        const clinicsToReport = (user?.role === Role.Doctor && user.doctor_id)
-            ? clinics.filter(c => c.doctor_id === user.doctor_id)
-            : clinics;
+        const dailyVisits = visits.filter(v => v.visit_date === reportDate);
+        const dailyRevenues = revenues.filter(r => r.date === reportDate);
 
-        return clinicsToReport.map(clinic => {
+        const clinicReports = clinics.map(clinic => {
             const clinicVisits = dailyVisits.filter(v => v.clinic_id === clinic.clinic_id);
-            const clinicRevenues = dailyRevenues.filter(r => r.clinic_id === clinic.clinic_id);
-            const totalRevenue = clinicRevenues.reduce((sum, r) => sum + r.amount, 0);
-            const doctor = doctors.find(d => d.doctor_id === clinic.doctor_id);
+            const clinicRevenue = dailyRevenues
+                .filter(r => r.clinic_id === clinic.clinic_id)
+                .reduce((sum, r) => sum + r.amount, 0);
+
+            const firstVisits = clinicVisits.filter(v => v.visit_type === VisitType.FirstVisit).length;
+            const followUpVisits = clinicVisits.filter(v => v.visit_type === VisitType.FollowUp).length;
 
             return {
                 clinicId: clinic.clinic_id,
                 clinicName: clinic.clinic_name,
-                doctorName: doctor ? doctor.doctor_name : 'N/A',
-                caseCount: clinicVisits.length,
-                totalRevenue: totalRevenue,
+                doctorName: doctors.find(d => d.doctor_id === clinic.doctor_id)?.doctor_name || 'N/A',
+                totalVisits: clinicVisits.length,
+                firstVisits,
+                followUpVisits,
+                totalRevenue: clinicRevenue,
             };
         });
-    }, [clinics, visits, revenues, selectedDate, user, doctors]);
 
-    const grandTotals = useMemo(() => {
-        const totalCases = reportData.reduce((sum, data) => sum + data.caseCount, 0);
-        const totalRevenue = reportData.reduce((sum, data) => sum + data.totalRevenue, 0);
-        return { totalCases, totalRevenue };
-    }, [reportData]);
+        const overallTotalRevenue = clinicReports.reduce((sum, report) => sum + report.totalRevenue, 0);
+        const overallTotalVisits = clinicReports.reduce((sum, report) => sum + report.totalVisits, 0);
+        
+        return { clinicReports, overallTotalRevenue, overallTotalVisits };
 
+    }, [reportDate, clinics, doctors, visits, revenues]);
+    
     const handlePrint = () => {
         window.print();
     };
 
-    const PrintableContent = () => (
-        <div className="bg-white text-black p-6">
-            <div className="text-center mb-6">
-                 {clinicLogo && <img src={clinicLogo} alt="شعار المستوصف" className="h-20 w-auto mx-auto mb-4 object-contain" />}
-                 <h1 className="text-2xl font-bold text-black">تقرير العيادات اليومي</h1>
-                 <p className="text-lg text-gray-700">لتاريخ: {selectedDate}</p>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-right">
-                    <thead className="bg-gray-100">
-                        <tr>
-                            <th className="p-3 text-sm font-semibold tracking-wide">العيادة</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide">الطبيب</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide">عدد الحالات</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide">إجمالي الإيراد</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {reportData.map(data => (
-                            <tr key={data.clinicId}>
-                                <td className="p-3 text-sm font-medium">{data.clinicName}</td>
-                                <td className="p-3 text-sm">{data.doctorName}</td>
-                                <td className="p-3 text-sm">{data.caseCount}</td>
-                                <td className="p-3 text-sm font-bold">{data.totalRevenue.toFixed(2)} ريال</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                    <tfoot className="bg-gray-100">
-                        <tr>
-                            <td colSpan={2} className="p-3 text-sm font-bold text-left">الإجمالي</td>
-                            <td className="p-3 text-sm font-bold text-teal-700">{grandTotals.totalCases}</td>
-                            <td className="p-3 text-sm font-bold text-teal-700">{grandTotals.totalRevenue.toFixed(2)} ريال</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
-    );
-    
     return (
-        <>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md no-print">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-                    <h1 className="text-2xl font-bold text-teal-800 dark:text-teal-300">تقرير العيادات اليومي</h1>
-                    <div className="flex items-center gap-4">
-                        <input
-                            type="date"
-                            value={selectedDate}
-                            onChange={e => setSelectedDate(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        />
-                        <button
-                            onClick={handlePrint}
-                            className="flex items-center bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-                        >
-                            <PrinterIcon className="h-5 w-5 ml-2" />
-                            طباعة
-                        </button>
-                    </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 no-print">
+                <h1 className="text-2xl font-bold text-teal-800 dark:text-teal-300">التقرير اليومي للعيادات</h1>
+                <div className="flex items-center gap-4 mt-4 sm:mt-0">
+                    <input 
+                        type="date" 
+                        value={reportDate} 
+                        onChange={e => setReportDate(e.target.value)}
+                        className="p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                    <button onClick={handlePrint} className="flex items-center bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600">
+                        <PrinterIcon className="h-5 w-5 ml-2"/>
+                        طباعة
+                    </button>
                 </div>
-                
-                <div className="overflow-x-auto">
-                    <table className="w-full text-right">
+            </div>
+            
+            {/* Printable Area */}
+            <div className="printable-report">
+                <header className="text-center mb-8 printable-header">
+                    {clinicLogo && <img src={clinicLogo} alt="Logo" className="h-20 mx-auto mb-4" />}
+                    <h2 className="text-3xl font-bold">التقرير اليومي للعيادات</h2>
+                    <p className="text-lg text-gray-600 dark:text-gray-400">لتاريخ: {new Date(reportDate + 'T00:00:00').toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </header>
+
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-right border-collapse border border-gray-300 dark:border-gray-600">
                         <thead className="bg-gray-100 dark:bg-gray-700">
                             <tr>
-                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">العيادة</th>
-                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">الطبيب</th>
-                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">عدد الحالات</th>
-                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">إجمالي الإيراد</th>
+                                <th className="p-3 border border-gray-300 dark:border-gray-600">العيادة</th>
+                                <th className="p-3 border border-gray-300 dark:border-gray-600">الطبيب</th>
+                                <th className="p-3 border border-gray-300 dark:border-gray-600">عدد الكشوفات</th>
+                                <th className="p-3 border border-gray-300 dark:border-gray-600">عدد المتابعات</th>
+                                <th className="p-3 border border-gray-300 dark:border-gray-600">إجمالي الزيارات</th>
+                                <th className="p-3 border border-gray-300 dark:border-gray-600">إجمالي الإيرادات</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {reportData.map(data => (
-                                <tr key={data.clinicId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300 font-medium">{data.clinicName}</td>
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{data.doctorName}</td>
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{data.caseCount}</td>
-                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300 font-bold">{data.totalRevenue.toFixed(2)} ريال</td>
+                        <tbody>
+                            {reportData.clinicReports.map(report => (
+                                <tr key={report.clinicId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <td className="p-3 border border-gray-300 dark:border-gray-600">{report.clinicName}</td>
+                                    <td className="p-3 border border-gray-300 dark:border-gray-600">{report.doctorName}</td>
+                                    <td className="p-3 border border-gray-300 dark:border-gray-600">{report.firstVisits}</td>
+                                    <td className="p-3 border border-gray-300 dark:border-gray-600">{report.followUpVisits}</td>
+                                    <td className="p-3 border border-gray-300 dark:border-gray-600 font-bold">{report.totalVisits}</td>
+                                    <td className="p-3 border border-gray-300 dark:border-gray-600 font-bold">{report.totalRevenue.toLocaleString()} ريال</td>
                                 </tr>
                             ))}
                         </tbody>
-                        <tfoot className="bg-gray-100 dark:bg-gray-700">
+                        <tfoot className="bg-gray-200 dark:bg-gray-800 font-bold">
                             <tr>
-                                <td colSpan={2} className="p-3 text-sm font-bold text-gray-800 dark:text-gray-200 text-left">الإجمالي</td>
-                                <td className="p-3 text-sm font-bold text-teal-700 dark:text-teal-400">{grandTotals.totalCases}</td>
-                                <td className="p-3 text-sm font-bold text-teal-700 dark:text-teal-400">{grandTotals.totalRevenue.toFixed(2)} ريال</td>
+                                <td colSpan={4} className="p-3 border border-gray-300 dark:border-gray-600 text-center">الإجمالي العام</td>
+                                <td className="p-3 border border-gray-300 dark:border-gray-600">{reportData.overallTotalVisits}</td>
+                                <td className="p-3 border border-gray-300 dark:border-gray-600">{reportData.overallTotalRevenue.toLocaleString()} ريال</td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
             </div>
-            <div className="print-only">
-                <PrintableContent />
-            </div>
-        </>
+        </div>
     );
 };
 

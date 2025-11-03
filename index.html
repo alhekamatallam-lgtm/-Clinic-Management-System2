@@ -3,111 +3,55 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>نظام إدارة عيادات الراجحي</title>
+    <title>Alrajhi Clinic v3</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://aistudiocdn.com/react@^19.2.0",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+        "react/": "https://aistudiocdn.com/react@^19.2.0/",
+        "@heroicons/react/": "https://aistudiocdn.com/@heroicons/react@^2.2.0/",
+        "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
+        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0"
+      }
+    }
+    </script>
+
     <style>
         body {
-            font-family: 'Tajawal', sans-serif;
+            font-family: 'Cairo', sans-serif;
         }
-        /* Custom scrollbar for better UX */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-        .dark ::-webkit-scrollbar-track {
-            background: #2d3748; /* gray-800 */
-        }
-        .dark ::-webkit-scrollbar-thumb {
-            background: #718096; /* gray-500 */
-        }
-        .dark ::-webkit-scrollbar-thumb:hover {
-            background: #a0aec0; /* gray-400 */
-        }
-        /* Animation for notifications */
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translate3d(-50%, -100%, 0);
-            }
-            to {
-                opacity: 1;
-                transform: translate3d(-50%, 0, 0);
-            }
-        }
-        .animate-fade-in-down {
-            animation: fadeInDown 0.5s ease-out forwards;
-        }
-
-        /* Animation for documentation page */
-        @keyframes fadeInSlideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fade-in-slide-down {
-          animation: fadeInSlideDown 0.5s ease-out forwards;
-        }
-        
-        /* Print-specific styles */
         @media print {
+            body.printing * {
+                visibility: hidden;
+            }
+            body.printing .printable-area,
+            body.printing .printable-area * {
+                visibility: visible;
+            }
+            body.printing .printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
             .no-print {
                 display: none !important;
             }
             .print-only {
                 display: block !important;
             }
-            main {
-                padding: 0 !important;
-                overflow: visible !important;
-            }
-            body, #root {
-                display: block !important;
-                height: auto !important;
-                overflow: visible !important;
-                background-color: #fff !important;
-            }
         }
-        
-        .print-only {
-            display: none;
-        }
-
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900">
     <div id="root"></div>
-
-    <script type="importmap">
-    {
-      "imports": {
-        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.25.0",
-        "react/": "https://aistudiocdn.com/react@^19.2.0/",
-        "react": "https://aistudiocdn.com/react@^19.2.0",
-        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-        "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
-        "@heroicons/react/": "https://aistudiocdn.com/@heroicons/react@^2.2.0/"
-      }
-    }
-    </script>
     <script type="module" src="/index.tsx"></script>
 </body>
 </html>

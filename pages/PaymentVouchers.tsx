@@ -1,184 +1,125 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { PaymentVoucher, PaymentVoucherStatus, Role } from '../types';
-import { ChevronRightIcon, ChevronLeftIcon, CheckBadgeIcon, ClockIcon, XCircleIcon, PrinterIcon, ArrowUturnLeftIcon, EyeIcon } from '@heroicons/react/24/solid';
+import { PaymentVoucher, PaymentVoucherStatus, PaymentMethod, Disbursement, DisbursementStatus, Role } from '../types';
+import Modal from '../components/ui/Modal';
+import { PlusIcon, CheckCircleIcon, XCircleIcon, ChevronRightIcon, ChevronLeftIcon } from '@heroicons/react/24/solid';
+
+const getLocalYYYYMMDD = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const translateVoucherStatus = (status: PaymentVoucherStatus) => {
+    switch (status) {
+        case PaymentVoucherStatus.Pending: return 'بانتظار الاعتماد';
+        case PaymentVoucherStatus.Approved: return 'معتمد';
+        case PaymentVoucherStatus.Rejected: return 'مرفوض';
+        default: return status;
+    }
+};
+
+const getStatusColor = (status: PaymentVoucherStatus) => {
+    switch (status) {
+        case PaymentVoucherStatus.Pending: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+        case PaymentVoucherStatus.Approved: return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+        case PaymentVoucherStatus.Rejected: return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+        default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    }
+};
 
 const PaymentVouchers: React.FC = () => {
-    const { user, paymentVouchers, updatePaymentVoucherStatus, clinicLogo, clinicStamp } = useApp();
-    
-    const [updatingId, setUpdatingId] = useState<number | null>(null);
-    const [previewVoucher, setPreviewVoucher] = useState<PaymentVoucher | null>(null);
+    const { user, paymentVouchers, disbursements, addPaymentVoucher, updatePaymentVoucherStatus, isAdding } = useApp();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedDisbursement, setSelectedDisbursement] = useState<Disbursement | null>(null);
 
-    // Pagination state
+    // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     
+    const initialFormState = {
+        payment_method: PaymentMethod.Cash,
+        notes: '',
+    };
+    const [formData, setFormData] = useState(initialFormState);
+
+    const approvedRequestsWithoutVoucher = useMemo(() => {
+        const voucherRequestIds = new Set(paymentVouchers.map(v => v.request_id));
+        return disbursements.filter(d => 
+            d.status === DisbursementStatus.Approved && !voucherRequestIds.has(d.disbursement_id)
+        );
+    }, [disbursements, paymentVouchers]);
+
     const sortedVouchers = useMemo(() => 
-        [...paymentVouchers].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [paymentVouchers]);
-    
-    // Pagination calculations
+        [...paymentVouchers].sort((a, b) => b.voucher_id - a.voucher_id), 
+        [paymentVouchers]
+    );
+
     const totalPages = Math.ceil(sortedVouchers.length / itemsPerPage);
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentVouchers = sortedVouchers.slice(indexOfFirstItem, indexOfLastItem);
-    
-    const totalAmount = useMemo(() => 
-        currentVouchers.reduce((sum, item) => sum + item.amount, 0),
-    [currentVouchers]);
-    
+
     const handlePageChange = (pageNumber: number) => {
         if (pageNumber < 1 || pageNumber > totalPages) return;
         setCurrentPage(pageNumber);
     };
 
-    const handleApproveVoucher = async (voucher: PaymentVoucher) => {
-        if (window.confirm('هل أنت متأكد من اعتماد سند الصرف هذا؟')) {
-            setUpdatingId(voucher.request_id);
-            await updatePaymentVoucherStatus(voucher, PaymentVoucherStatus.Approved);
-            setUpdatingId(null);
-        }
+    const handleOpenModal = (disbursement: Disbursement) => {
+        setSelectedDisbursement(disbursement);
+        setFormData(initialFormState);
+        setIsModalOpen(true);
     };
 
-    const handleRejectVoucher = async (voucher: PaymentVoucher) => {
-        if (window.confirm('هل أنت متأكد من رفض سند الصرف هذا؟')) {
-            setUpdatingId(voucher.request_id);
-            await updatePaymentVoucherStatus(voucher, PaymentVoucherStatus.Rejected);
-            setUpdatingId(null);
-        }
-    };
-    
-    const handlePrintVoucher = (voucher: PaymentVoucher) => {
-        setPreviewVoucher(voucher);
-        setTimeout(() => {
-            window.print();
-        }, 100);
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedDisbursement(null);
     };
 
-    const handlePreviewVoucher = (voucher: PaymentVoucher) => {
-        setPreviewVoucher(voucher);
+    const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
-    
-    useEffect(() => {
-        if (previewVoucher) {
-             const timer = setTimeout(() => {
-                // This ensures the state update has rendered before we attempt to print.
-            }, 10);
-            return () => clearTimeout(timer);
-        }
-    }, [previewVoucher]);
 
-    
-    const getStatusChip = (status: PaymentVoucherStatus) => {
-        switch (status) {
-            case PaymentVoucherStatus.Pending:
-                return (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-                        <ClockIcon className="h-4 w-4 ml-1 text-yellow-500" />
-                        بانتظار الاعتماد
-                    </span>
-                );
-            case PaymentVoucherStatus.Approved:
-                return (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                        <CheckBadgeIcon className="h-4 w-4 ml-1 text-green-500" />
-                        معتمد
-                    </span>
-                );
-            case PaymentVoucherStatus.Rejected:
-                 return (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
-                        <XCircleIcon className="h-4 w-4 ml-1 text-red-500" />
-                        مرفوض
-                    </span>
-                );
-            default:
-                return null;
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedDisbursement) return;
+        await addPaymentVoucher({
+            request_id: selectedDisbursement.disbursement_id,
+            date: getLocalYYYYMMDD(new Date()),
+            disbursement_type: selectedDisbursement.disbursement_type,
+            amount: selectedDisbursement.amount,
+            beneficiary: selectedDisbursement.beneficiary,
+            purpose: selectedDisbursement.purpose,
+            payment_method: formData.payment_method,
+            notes: formData.notes,
+        });
+        handleCloseModal();
+    };
+
+    const handleStatusUpdate = (voucher: PaymentVoucher, status: PaymentVoucherStatus) => {
+        const actionText = status === PaymentVoucherStatus.Approved ? 'اعتماد' : 'رفض';
+        if (window.confirm(`هل أنت متأكد من ${actionText} سند الصرف للطلب رقم ${voucher.request_id}؟`)) {
+            updatePaymentVoucherStatus(voucher, status);
         }
     };
-    
-    const ActionSpinner: React.FC = () => (
-        <div className="flex items-center justify-center text-sm text-gray-500">
-            <svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            جاري...
-        </div>
-    );
-    
-    const PrintablePaymentVoucher: React.FC<{ voucher: PaymentVoucher; onBack: () => void; }> = ({ voucher, onBack }) => (
-        <div className="printable-area bg-white text-black p-8">
-            <header className="flex justify-between items-center border-b-2 border-gray-800 pb-4 mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">مستوصف الراجحي التكافلي</h1>
-                    <p className="text-md text-gray-600">Al Rajhi Takaful Polyclinic</p>
-                </div>
-                 {clinicLogo && <img src={clinicLogo} alt="شعار المستوصف" className="h-20 w-auto object-contain" />}
-            </header>
-            <h2 className="text-center text-xl font-bold mb-6 underline">سند صرف</h2>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8 text-md">
-                <p><strong>رقم السند:</strong> {voucher.voucher_id}</p>
-                <p><strong>تاريخ السند:</strong> {voucher.date}</p>
-                 <p><strong>بناءً على طلب رقم:</strong> {voucher.request_id}</p>
-                <p><strong>المستفيد:</strong> {voucher.beneficiary}</p>
-                <p className="col-span-2"><strong>المبلغ:</strong> {voucher.amount.toFixed(2)} ريال</p>
-                <p className="col-span-2"><strong>مقابل / الغرض من الصرف:</strong> {voucher.purpose}</p>
-                <p><strong>طريقة الصرف:</strong> {voucher.payment_method}</p>
-                <p><strong>نوع الصرف:</strong> {voucher.disbursement_type}</p>
-                {voucher.notes && <p className="col-span-2"><strong>ملاحظات المحاسب:</strong> {voucher.notes}</p>}
-                <p className="col-span-2 font-bold"><strong>الحالة:</strong> {voucher.status}</p>
-            </div>
-            <footer className="pt-24">
-                <div className="flex justify-between items-end">
-                    <div className="text-center w-1/3">
-                        <p className="font-bold mb-12">المحاسب</p>
-                        <p className="border-t-2 border-dotted border-gray-400 w-40 mx-auto"></p>
-                    </div>
-                    <div className="text-center w-1/3">
-                        <p className="font-bold mb-4">ختم المستوصف</p>
-                        {clinicStamp ? (
-                             <img src={clinicStamp} alt="ختم المستوصف" className="h-24 mx-auto object-contain" />
-                        ) : (
-                             <div className="h-24 w-24 border-2 border-dashed rounded-full mx-auto flex items-center justify-center text-gray-400">
-                                <p className="text-xs">مكان الختم</p>
-                            </div>
-                        )}
-                    </div>
-                    <div className="text-center w-1/3">
-                        <p className="font-bold mb-12">المدير</p>
-                        <p className="border-t-2 border-dotted border-gray-400 w-40 mx-auto"></p>
-                    </div>
-                </div>
-            </footer>
-            <div className="no-print mt-8 text-center flex justify-center items-center gap-4">
-                <button onClick={onBack} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center">
-                    <ArrowUturnLeftIcon className="h-5 w-5 ml-2" />
-                    عودة
-                </button>
-                <button onClick={() => window.print()} className="bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 flex items-center">
-                    <PrinterIcon className="h-5 w-5 ml-2" />
-                    طباعة
-                </button>
-            </div>
-        </div>
-    );
     
     const PaginationControls = () => {
         if (totalPages <= 1) return null;
         return (
             <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4">
-                <span className="text-sm text-gray-700 dark:text-gray-400">
-                    عرض {indexOfFirstItem + 1} إلى {Math.min(indexOfLastItem, sortedVouchers.length)} من أصل {sortedVouchers.length} سجل
+                 <span className="text-sm text-gray-700 dark:text-gray-400">
+                    عرض {indexOfFirstItem + 1} إلى {Math.min(indexOfLastItem, sortedVouchers.length)} من {sortedVouchers.length} سجل
                 </span>
                 <div className="flex items-center gap-2">
                     <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="flex items-center justify-center px-3 h-8 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
                         <ChevronRightIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">السابق</span>
+                        <span>السابق</span>
                     </button>
                     <span className="text-sm text-gray-700 dark:text-gray-400">صفحة {currentPage} من {totalPages}</span>
                     <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="flex items-center justify-center px-3 h-8 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
-                        <span className="hidden sm:inline">التالي</span>
+                        <span>التالي</span>
                         <ChevronLeftIcon className="w-4 h-4" />
                     </button>
                 </div>
@@ -186,75 +127,102 @@ const PaymentVouchers: React.FC = () => {
         );
     };
 
-    if (previewVoucher) {
-        return <PrintablePaymentVoucher voucher={previewVoucher} onBack={() => setPreviewVoucher(null)} />;
-    }
-
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-teal-800 dark:text-teal-300">إدارة سندات الصرف</h1>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-right">
-                    <thead className="bg-gray-100 dark:bg-gray-700">
-                        <tr>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300"># السند</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300"># الطلب</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">المستفيد</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">المبلغ</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">ملاحظات</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">الحالة</th>
-                            <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">إجراء</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                        {currentVouchers.map(item => (
-                            <tr key={item.voucher_id + '-' + item.request_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.voucher_id}</td>
-                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.request_id}</td>
-                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{item.beneficiary}</td>
-                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300 font-bold">{item.amount.toFixed(2)} ريال</td>
-                                <td className="p-3 text-sm text-gray-500 dark:text-gray-400">{item.notes || '-'}</td>
-                                <td className="p-3 text-sm">{getStatusChip(item.status)}</td>
-                                <td className="p-3 text-sm">
-                                    <div className="flex items-center gap-2">
-                                         {updatingId === item.request_id ? <ActionSpinner /> : (
-                                            <>
-                                                {user?.role === Role.Manager && item.status === PaymentVoucherStatus.Pending && (
-                                                    <>
-                                                        <button onClick={() => handleApproveVoucher(item)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
-                                                            <CheckBadgeIcon className="h-4 w-4 ml-1" /> اعتماد
-                                                        </button>
-                                                        <button onClick={() => handleRejectVoucher(item)} className="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 flex items-center">
-                                                            <XCircleIcon className="h-4 w-4 ml-1" /> رفض
-                                                        </button>
-                                                    </>
-                                                )}
-                                                <button onClick={() => handlePreviewVoucher(item)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full dark:hover:bg-gray-600" title="معاينة السند">
-                                                    <EyeIcon className="h-5 w-5" />
-                                                </button>
-                                                <button onClick={() => handlePrintVoucher(item)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full dark:hover:bg-gray-600" title="طباعة السند">
-                                                    <PrinterIcon className="h-5 w-5" />
-                                                </button>
-                                            </>
-                                        )}
+        <div className="space-y-8">
+            { (user?.role === Role.Accountant || user?.role === Role.Manager) &&
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h2 className="text-xl font-bold text-teal-800 dark:text-teal-300 mb-4">طلبات صرف معتمدة (جاهزة لإنشاء سند)</h2>
+                    {approvedRequestsWithoutVoucher.length > 0 ? (
+                        <ul className="space-y-3">
+                            {approvedRequestsWithoutVoucher.map(d => (
+                                <li key={d.disbursement_id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                    <div>
+                                        <p><strong>طلب رقم:</strong> {d.disbursement_id} &nbsp; <strong>لـ:</strong> {d.beneficiary}</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">{d.amount} ريال - {d.purpose}</p>
                                     </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                    <tfoot className="bg-gray-100 dark:bg-gray-700">
-                        <tr>
-                            <td colSpan={3} className="p-3 text-sm font-bold text-gray-800 dark:text-gray-200 text-left">إجمالي الصفحة الحالية</td>
-                            <td colSpan={5} className="p-3 text-sm font-bold text-teal-700 dark:text-teal-400 text-right">{totalAmount.toFixed(2)} ريال</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-            
-            <PaginationControls />
+                                    <button onClick={() => handleOpenModal(d)} className="flex items-center bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600">
+                                        <PlusIcon className="h-4 w-4 ml-1" />
+                                        إنشاء سند
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-center text-gray-500 dark:text-gray-400">لا توجد طلبات صرف معتمدة حالياً.</p>
+                    )}
+                </div>
+            }
 
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                <h1 className="text-2xl font-bold text-teal-800 dark:text-teal-300 mb-6">سجل سندات الصرف</h1>
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-right">
+                        <thead className="bg-gray-100 dark:bg-gray-700">
+                            <tr>
+                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">رقم السند</th>
+                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">رقم الطلب</th>
+                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">التاريخ</th>
+                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">المستفيد</th>
+                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">المبلغ</th>
+                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">طريقة الصرف</th>
+                                <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">الحالة</th>
+                                {user?.role === Role.Manager && <th className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">إجراء</th>}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {currentVouchers.map(v => (
+                                <tr key={v.voucher_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{v.voucher_id}</td>
+                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{v.request_id}</td>
+                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{v.date}</td>
+                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{v.beneficiary}</td>
+                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{v.amount} ريال</td>
+                                    <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{v.payment_method}</td>
+                                    <td className="p-3 text-sm">
+                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(v.status)}`}>
+                                            {translateVoucherStatus(v.status)}
+                                        </span>
+                                    </td>
+                                    {user?.role === Role.Manager && (
+                                        <td className="p-3">
+                                            {v.status === PaymentVoucherStatus.Pending && (
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => handleStatusUpdate(v, PaymentVoucherStatus.Approved)} className="p-2 text-green-600 hover:bg-green-100 rounded-full dark:hover:bg-green-900" title="اعتماد">
+                                                        <CheckCircleIcon className="h-5 w-5" />
+                                                    </button>
+                                                    <button onClick={() => handleStatusUpdate(v, PaymentVoucherStatus.Rejected)} className="p-2 text-red-600 hover:bg-red-100 rounded-full dark:hover:bg-red-900" title="رفض">
+                                                        <XCircleIcon className="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <PaginationControls />
+            </div>
+
+            <Modal title={`إنشاء سند صرف للطلب #${selectedDisbursement?.disbursement_id}`} isOpen={isModalOpen} onClose={handleCloseModal}>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                        <p><strong>المبلغ:</strong> {selectedDisbursement?.amount} ريال</p>
+                        <p><strong>المستفيد:</strong> {selectedDisbursement?.beneficiary}</p>
+                        <p><strong>الغرض:</strong> {selectedDisbursement?.purpose}</p>
+                    </div>
+                    <select name="payment_method" value={formData.payment_method} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white bg-white">
+                        <option value={PaymentMethod.Cash}>نقدي</option>
+                        <option value={PaymentMethod.BankTransfer}>تحويل بنكي</option>
+                        <option value={PaymentMethod.Cheque}>شيك</option>
+                    </select>
+                    <textarea name="notes" placeholder="ملاحظات (اختياري)" value={formData.notes} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                    <button type="submit" className="w-full bg-teal-500 text-white p-2 rounded hover:bg-teal-600 disabled:bg-gray-400" disabled={isAdding}>
+                        {isAdding ? 'جاري الإنشاء...' : 'إنشاء السند'}
+                    </button>
+                </form>
+            </Modal>
         </div>
     );
 };
