@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect, ReactNode, useRe
 import { Patient, Visit, Diagnosis, User, Clinic, Revenue, Role, View, VisitStatus, VisitType, Doctor, Optimization, Disbursement, DisbursementStatus, DisbursementType, PaymentVoucher, PaymentVoucherStatus, PaymentMethod } from '../types';
 
 // The API URL provided by the user.
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSSTI-9CZ6oq1q3jkbv8T3mav94cJbXSA1qYvqh9khLcwPhmROz_k4saNEKMhirf4E/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzruOMj6Unp6g4QoqMm6aXfXxGOiJPYvgcWKQimubALhPsEeNyCnRnl9CK9L2h0_ps9/exec"; 
 
 // Backend column mapping, used to parse array responses from the API
 const COLUMN_MAPPING = {
@@ -381,7 +381,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const currentSettings = { ...settings };
         try {
             setSettings(newSettings); // Optimistic update
-            const result = await postData('Settings', { action: 'update', data: newSettings });
+            const result = await postData('Settings', newSettings);
             if (result.success) {
                 localStorage.setItem('clinicSettings', JSON.stringify(newSettings));
                 showNotification('تم حفظ الإعدادات بنجاح', 'success');
@@ -399,7 +399,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const addPatient = async (patientData: Omit<Patient, 'patient_id'>) => {
         try {
-            const result = await postData('Patients', patientData);
+            const payload = { patient_id: "", ...patientData };
+            const result = await postData('Patients', payload);
             if (result.success) {
                 showNotification(result.message || 'تمت إضافة المريض بنجاح', 'success');
                 await fetchData(true);
@@ -443,6 +444,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         let success = false;
         try {
             const dataToSend = {
+                revenue_id: "",
                 ...revenueData,
                 visit_id: revenueData.visit_id ?? 0,
             };
@@ -486,6 +488,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             const newQueueNumber = visitsForClinicOnDate.length + 1;
     
             const visitToSend = {
+                visit_id: "",
                 patient_id: visitData.patient_id,
                 clinic_id: visitData.clinic_id,
                 visit_date: visitDate,
@@ -551,7 +554,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const updateVisit = async (visitId: number, visitData: Partial<Omit<Visit, 'visit_id'>>) => {
         try {
             const dataToSend = {
-                action: 'update',
                 visit_id: visitId,
                 ...visitData
             };
@@ -568,6 +570,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const addDiagnosis = async (diagnosisData: Omit<Diagnosis, 'diagnosis_id'>) => {
         try {
             const dataToSend = {
+                diagnosis_id: "",
                 ...diagnosisData,
                 labs_needed: Array.isArray(diagnosisData.labs_needed) ? diagnosisData.labs_needed.join(',') : '',
             };
@@ -588,7 +591,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     const addUser = async (userData: Omit<User, 'user_id'>) => {
         try {
-            const dataToSend = { ...userData, status: 'مفعل' };
+            const dataToSend = { user_id: "", ...userData, status: 'مفعل' };
             const result = await postData('Users', dataToSend);
             if (result.success) {
                 showNotification(result.message || 'تمت إضافة المستخدم بنجاح', 'success');
@@ -604,7 +607,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const addDoctor = async (doctorData: Omit<Doctor, 'doctor_id'>) => {
         try {
-            const result = await postData('Doctors', doctorData);
+            const payload = { doctor_id: "", ...doctorData };
+            const result = await postData('Doctors', payload);
             if (result.success) {
                 showNotification(result.message || 'تمت إضافة الطبيب بنجاح', 'success');
                 await fetchData(true);
@@ -619,7 +623,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const addClinic = async (clinicData: Omit<Clinic, 'clinic_id' | 'doctor_name'>) => {
         try {
-            const result = await postData('Clinics', clinicData);
+            const payload = { clinic_id: "", ...clinicData };
+            const result = await postData('Clinics', payload);
             if (result.success) {
                 showNotification(result.message || 'تمت إضافة العيادة بنجاح', 'success');
                 await fetchData(true);
@@ -634,6 +639,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const addOptimization = async (suggestionData: Omit<Optimization, 'optimization_id'>) => {
         try {
+            // The user example for Optimization does not include an ID field for adding.
             const result = await postData('Optimization', suggestionData);
             if (result.success) {
                 showNotification('تم إرسال اقتراحك بنجاح. شكراً لك!', 'success');
@@ -652,6 +658,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         try {
             const dataWithStatus = { ...disbursementData, status: DisbursementStatus.Pending };
             const arabicKeyData = {
+                "رقم الطلب": "",
                 "التاريخ": dataWithStatus.date,
                 "نوع الصرف": dataWithStatus.disbursement_type,
                 "المبلغ": dataWithStatus.amount,
@@ -683,7 +690,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         try {
             const payload = {
-                action: 'update',
                 "رقم الطلب": disbursement.disbursement_id,
                 "التاريخ": disbursement.date,
                 "نوع الصرف": disbursement.disbursement_type,
@@ -712,6 +718,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         try {
             const dataWithStatus = { ...voucherData, status: PaymentVoucherStatus.Pending };
             const arabicKeyData = {
+                "رقم السند": "",
                 "رقم الطلب": dataWithStatus.request_id,
                 "التاريخ": dataWithStatus.date,
                 "نوع الصرف": dataWithStatus.disbursement_type,
@@ -744,7 +751,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             return;
         }
         try {
-            const rowData = {
+            const payload = {
+                "رقم السند": voucherToUpdate.voucher_id,
                 "رقم الطلب": voucherToUpdate.request_id,
                 "التاريخ": voucherToUpdate.date,
                 "نوع الصرف": voucherToUpdate.disbursement_type,
@@ -754,12 +762,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 "طريقة الصرف": voucherToUpdate.payment_method,
                 "ملاحظات": voucherToUpdate.notes || '',
                 "الحالة": status,
-            };
-            
-            const payload = {
-                action: 'update',
-                ...rowData,
-                "رقم السند": voucherToUpdate.voucher_id,
             };
 
             const result = await postData('Payment Voucher', payload);
@@ -779,7 +781,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const updateClinic = async (clinicId: number, clinicData: Partial<Omit<Clinic, 'clinic_id'>>) => {
         try {
             const dataToSend = {
-                action: 'update',
                 clinic_id: clinicId,
                 ...clinicData
             };
@@ -819,7 +820,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const updateUser = async (userId: number, userData: Partial<Omit<User, 'user_id'>>) => {
         try {
             const dataToSend = {
-                action: 'update',
                 user_id: userId,
                 ...userData
             };
