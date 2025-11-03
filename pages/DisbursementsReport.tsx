@@ -4,7 +4,7 @@ import { FunnelIcon, XMarkIcon, PrinterIcon } from '@heroicons/react/24/solid';
 import { Disbursement, DisbursementStatus } from '../types';
 
 const DisbursementsReport: React.FC = () => {
-    const { disbursements } = useApp();
+    const { disbursements, clinicLogo } = useApp();
     
     // Filters
     const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -22,7 +22,7 @@ const DisbursementsReport: React.FC = () => {
         if (endDate) {
             temp = temp.filter(d => d.date <= endDate);
         }
-        return temp;
+        return temp.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [disbursements, statusFilter, startDate, endDate]);
 
     const totalAmount = useMemo(() => {
@@ -63,36 +63,46 @@ const DisbursementsReport: React.FC = () => {
                 </button>
             </div>
             
-            <div className="bg-teal-50 dark:bg-teal-900/50 p-4 rounded-lg mb-6 text-center">
-                <h2 className="text-lg font-semibold text-teal-800 dark:text-teal-300">إجمالي المصروفات للفترة المحددة</h2>
-                <p className="text-3xl font-bold text-teal-600 dark:text-teal-400">{totalAmount.toLocaleString()} ريال</p>
-            </div>
+            <div className="printable-area">
+                <header className="text-center mb-8 hidden print:block">
+                    {clinicLogo && <img src={clinicLogo} alt="Logo" className="h-20 mx-auto mb-4" />}
+                    <h2 className="text-3xl font-bold">تقرير المصروفات</h2>
+                    <p className="text-lg text-gray-600">
+                        {startDate && endDate ? `للفترة من ${startDate} إلى ${endDate}` : 'لجميع الأوقات'}
+                    </p>
+                </header>
 
-            <div className="overflow-x-auto">
-                <table className="w-full text-right">
-                    <thead className="bg-gray-100 dark:bg-gray-700">
-                        <tr>
-                            <th className="p-3 text-sm font-semibold">#</th>
-                            <th className="p-3 text-sm font-semibold">التاريخ</th>
-                            <th className="p-3 text-sm font-semibold">المستفيد</th>
-                            <th className="p-3 text-sm font-semibold">المبلغ</th>
-                            <th className="p-3 text-sm font-semibold">الغرض</th>
-                            <th className="p-3 text-sm font-semibold">الحالة</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                        {filteredDisbursements.map(d => (
-                            <tr key={d.disbursement_id}>
-                                <td className="p-3">{d.disbursement_id}</td>
-                                <td className="p-3">{d.date}</td>
-                                <td className="p-3">{d.beneficiary}</td>
-                                <td className="p-3">{d.amount}</td>
-                                <td className="p-3">{d.purpose}</td>
-                                <td className="p-3">{d.status}</td>
+                <div className="bg-teal-50 dark:bg-teal-900/50 p-4 rounded-lg mb-6 text-center">
+                    <h2 className="text-lg font-semibold text-teal-800 dark:text-teal-300">إجمالي المصروفات للفترة المحددة</h2>
+                    <p className="text-3xl font-bold text-teal-600 dark:text-teal-400">{totalAmount.toLocaleString()} ريال</p>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-right">
+                        <thead className="bg-gray-100 dark:bg-gray-700">
+                            <tr>
+                                <th className="p-3 text-sm font-semibold">#</th>
+                                <th className="p-3 text-sm font-semibold">التاريخ</th>
+                                <th className="p-3 text-sm font-semibold">المستفيد</th>
+                                <th className="p-3 text-sm font-semibold">المبلغ</th>
+                                <th className="p-3 text-sm font-semibold">الغرض</th>
+                                <th className="p-3 text-sm font-semibold">الحالة</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {filteredDisbursements.map(d => (
+                                <tr key={d.disbursement_id}>
+                                    <td className="p-3">{d.disbursement_id}</td>
+                                    <td className="p-3">{d.date}</td>
+                                    <td className="p-3">{d.beneficiary}</td>
+                                    <td className="p-3">{d.amount}</td>
+                                    <td className="p-3">{d.purpose}</td>
+                                    <td className="p-3">{d.status}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

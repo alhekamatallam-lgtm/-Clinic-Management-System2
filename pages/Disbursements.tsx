@@ -103,14 +103,13 @@ const Disbursements: React.FC = () => {
     const [formData, setFormData] = useState(initialFormState);
     const [voucherFormData, setVoucherFormData] = useState({ payment_method: PaymentMethod.Cash, notes: '' });
     
-    // Print Effect
+    // Reliable Print Effect
     useEffect(() => {
         if (itemToPrint) {
-            const timer = setTimeout(() => {
-                window.print();
-                setItemToPrint(null);
-            }, 100);
-            return () => clearTimeout(timer);
+            // This effect runs after the component re-renders with the printable content.
+            window.print();
+            // The print dialog is modal, so this line runs after it's closed.
+            setItemToPrint(null);
         }
     }, [itemToPrint]);
 
@@ -123,13 +122,15 @@ const Disbursements: React.FC = () => {
 
         disbursements.forEach(d => {
             const hasVoucher = paymentVouchers.find(v => v.request_id === d.disbursement_id);
+            const isVoucherFinal = hasVoucher && (hasVoucher.status === PaymentVoucherStatus.Approved || hasVoucher.status === PaymentVoucherStatus.Rejected);
+            
             if (d.status === DisbursementStatus.Pending) {
                 pending.push(d);
             } else if (d.status === DisbursementStatus.Approved && !hasVoucher) {
                 waitingForVoucher.push(d);
             } else if (hasVoucher && hasVoucher.status === PaymentVoucherStatus.Pending) {
                 pendingVoucher.push(d);
-            } else {
+            } else if (d.status === DisbursementStatus.Rejected || isVoucherFinal) {
                 archive.push(d);
             }
         });
@@ -198,64 +199,82 @@ const Disbursements: React.FC = () => {
         setUpdatingStatus(null);
     };
 
-    const DisbursementTable = ({ title, data, showActions }: { title: string, data: Disbursement[], showActions: boolean }) => (
-        <div className="overflow-x-auto">
+    const renderActions = (d: Disbursement) => {
+        const hasVoucher = paymentVouchers.find(v => v.request_id === d.disbursement_id);
+        const canCreateVoucher = user?.role === Role.Accountant && d.status === DisbursementStatus.Approved && !hasVoucher;
+
+        return (
+             <div className="flex items-center gap-1">
+                {user?.role === Role.Manager && d.status === DisbursementStatus.Pending && (
+                    <>
+                        <button onClick={() => handleStatusUpdate(d, DisbursementStatus.Approved)} disabled={updatingStatus === d.disbursement_id} className="p-2 text-green-600 hover:bg-green-100 rounded-full disabled:opacity-50" title="اعتماد"> <CheckCircleIcon className="h-5 w-5" /> </button>
+                        <button onClick={() => handleStatusUpdate(d, DisbursementStatus.Rejected)} disabled={updatingStatus === d.disbursement_id} className="p-2 text-red-600 hover:bg-red-100 rounded-full disabled:opacity-50" title="رفض"> <XCircleIcon className="h-5 w-5" /> </button>
+                    </>
+                )}
+                 {canCreateVoucher && (
+                    <button onClick={() => handleOpenVoucherModal(d)} className="bg-blue-500 text-white px-3 py-1 text-sm rounded-md hover:bg-blue-600">إنشاء سند</button>
+                 )}
+                <button onClick={() => setItemToPreview(d)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full" title="معاينة"><EyeIcon className="h-5 w-5" /></button>
+                <button onClick={() => setItemToPrint(d)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full" title="طباعة"><PrinterIcon className="h-5 w-5" /></button>
+            </div>
+        );
+    }
+
+    const DisbursementTable: React.FC<{ title: string; data: Disbursement[]; total?: number; }> = ({ title, data }) => (
+        <div>
             <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 my-2">{title} ({data.length})</h3>
-            <table className="w-full text-right">
-                <thead className="bg-gray-100 dark:bg-gray-700">
-                    <tr>
-                        {["رقم الطلب", "التاريخ", "المستفيد", "المبلغ", "الغرض", "الحالة", "إجراء"].map(h => 
-                            <th key={h} className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">{h}</th>
-                        )}
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {data.map(d => (
-                        <tr key={d.disbursement_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                            <td className="p-3 text-sm">{d.disbursement_id}</td>
-                            <td className="p-3 text-sm">{d.date}</td>
-                            <td className="p-3 text-sm">{d.beneficiary}</td>
-                            <td className="p-3 text-sm">{d.amount} ريال</td>
-                            <td className="p-3 text-sm">{d.purpose}</td>
-                            <td className="p-3 text-sm"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(d.status)}`}>{translateDisbursementStatus(d.status)}</span></td>
-                            <td className="p-3">
-                                <div className="flex items-center gap-1">
-                                    {showActions && user?.role === Role.Manager && d.status === DisbursementStatus.Pending && (
-                                        <>
-                                            <button onClick={() => handleStatusUpdate(d, DisbursementStatus.Approved)} disabled={updatingStatus === d.disbursement_id} className="p-2 text-green-600 hover:bg-green-100 rounded-full disabled:opacity-50"> <CheckCircleIcon className="h-5 w-5" /> </button>
-                                            <button onClick={() => handleStatusUpdate(d, DisbursementStatus.Rejected)} disabled={updatingStatus === d.disbursement_id} className="p-2 text-red-600 hover:bg-red-100 rounded-full disabled:opacity-50"> <XCircleIcon className="h-5 w-5" /> </button>
-                                        </>
-                                    )}
-                                    <button onClick={() => setItemToPreview(d)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full"><EyeIcon className="h-5 w-5" /></button>
-                                    <button onClick={() => setItemToPrint(d)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full"><PrinterIcon className="h-5 w-5" /></button>
-                                </div>
-                            </td>
+             <div className="overflow-x-auto">
+                <table className="w-full text-right">
+                    <thead className="bg-gray-100 dark:bg-gray-700">
+                        <tr>
+                            {["#", "التاريخ", "المستفيد", "المبلغ", "الغرض", "الحالة", "إجراء"].map(h => 
+                                <th key={h} className="p-3 text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300">{h}</th>
+                            )}
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {data.map(d => (
+                            <tr key={d.disbursement_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td className="p-3 text-sm">{d.disbursement_id}</td>
+                                <td className="p-3 text-sm">{d.date}</td>
+                                <td className="p-3 text-sm">{d.beneficiary}</td>
+                                <td className="p-3 text-sm">{d.amount.toLocaleString()} ريال</td>
+                                <td className="p-3 text-sm">{d.purpose}</td>
+                                <td className="p-3 text-sm"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(d.status)}`}>{translateDisbursementStatus(d.status)}</span></td>
+                                <td className="p-3">{renderActions(d)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
             {data.length === 0 && <p className="text-center p-4 text-gray-500">لا توجد طلبات في هذا القسم.</p>}
         </div>
     );
     
     if (itemToPrint) {
-        return <PrintableDisbursement disbursement={itemToPrint} logo={clinicLogo} stamp={clinicStamp} />;
+        return (
+            <div className="printable-area">
+                <PrintableDisbursement disbursement={itemToPrint} logo={clinicLogo} stamp={clinicStamp} />
+            </div>
+        );
     }
 
     return (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 no-print">
                 <h1 className="text-2xl font-bold text-teal-800 dark:text-teal-300">إدارة طلبات الصرف</h1>
-                <button onClick={handleOpenAddModal} className="flex items-center bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors">
-                    <PlusIcon className="h-5 w-5 ml-2"/>
-                    إضافة طلب صرف
-                </button>
+                {(user?.role === Role.Reception || user?.role === Role.Accountant || user?.role === Role.Manager) &&
+                    <button onClick={handleOpenAddModal} className="flex items-center bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors">
+                        <PlusIcon className="h-5 w-5 ml-2"/>
+                        إضافة طلب صرف
+                    </button>
+                }
             </div>
 
-            <div className="space-y-8">
-                <DisbursementTable title="طلبات بانتظار الاعتماد" data={pending} showActions={true} />
-                <DisbursementTable title="طلبات بانتظار إنشاء سند" data={waitingForVoucher} showActions={false} />
-                <DisbursementTable title="طلبات بانتظار اعتماد السند" data={pendingVoucher} showActions={false} />
+            <div className="space-y-8 no-print">
+                <DisbursementTable title="طلبات بانتظار الاعتماد" data={pending} />
+                <DisbursementTable title="طلبات بانتظار الصرف" data={waitingForVoucher} />
+                <DisbursementTable title="طلبات بانتظار اعتماد السند" data={pendingVoucher} />
 
                 <div>
                     <button onClick={() => setIsArchiveOpen(!isArchiveOpen)} className="w-full flex justify-between items-center p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
@@ -264,7 +283,7 @@ const Disbursements: React.FC = () => {
                     </button>
                     {isArchiveOpen && (
                         <div className="mt-2 border-t pt-2">
-                             <DisbursementTable title="" data={archive} showActions={false} />
+                             <DisbursementTable title="" data={archive} />
                         </div>
                     )}
                 </div>
@@ -302,8 +321,10 @@ const Disbursements: React.FC = () => {
             
             {itemToPreview && (
                 <Modal isOpen={!!itemToPreview} onClose={() => setItemToPreview(null)} title="معاينة طلب الصرف">
-                    <PrintableDisbursement disbursement={itemToPreview} logo={clinicLogo} stamp={clinicStamp} />
-                    <div className="mt-4 flex justify-end gap-2">
+                    <div className="printable-area">
+                        <PrintableDisbursement disbursement={itemToPreview} logo={clinicLogo} stamp={clinicStamp} />
+                    </div>
+                    <div className="mt-4 flex justify-end gap-2 no-print">
                         <button onClick={() => setItemToPreview(null)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">إغلاق</button>
                         <button onClick={() => { setItemToPrint(itemToPreview); setItemToPreview(null); }} className="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600">طباعة</button>
                     </div>

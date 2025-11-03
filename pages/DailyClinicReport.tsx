@@ -68,8 +68,8 @@ const DailyClinicReport: React.FC = () => {
             </div>
             
             {/* Printable Area */}
-            <div className="printable-report">
-                <header className="text-center mb-8 printable-header">
+            <div className="printable-area">
+                <header className="text-center mb-8">
                     {clinicLogo && <img src={clinicLogo} alt="Logo" className="h-20 mx-auto mb-4" />}
                     <h2 className="text-3xl font-bold">التقرير اليومي للعيادات</h2>
                     <p className="text-lg text-gray-600 dark:text-gray-400">لتاريخ: {new Date(reportDate + 'T00:00:00').toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>

@@ -27,25 +27,23 @@
         body {
             font-family: 'Cairo', sans-serif;
         }
+        /* New Robust Print Styles */
         @media print {
-            body.printing * {
+            body * {
                 visibility: hidden;
             }
-            body.printing .printable-area,
-            body.printing .printable-area * {
+            .printable-area, .printable-area * {
                 visibility: visible;
             }
-            body.printing .printable-area {
+            .printable-area {
                 position: absolute;
                 left: 0;
                 top: 0;
                 width: 100%;
+                height: auto;
             }
             .no-print {
                 display: none !important;
-            }
-            .print-only {
-                display: block !important;
             }
         }
     </style>

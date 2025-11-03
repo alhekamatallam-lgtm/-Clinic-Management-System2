@@ -83,14 +83,13 @@ const PaymentVouchers: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     
-    // Print Effect
+    // Reliable Print Effect
     useEffect(() => {
         if (itemToPrint) {
-            const timer = setTimeout(() => {
-                window.print();
-                setItemToPrint(null);
-            }, 100);
-            return () => clearTimeout(timer);
+            // This effect runs after the component re-renders with the printable content.
+            window.print();
+            // The print dialog is modal, so this line runs after it's closed.
+            setItemToPrint(null);
         }
     }, [itemToPrint]);
 
@@ -143,7 +142,11 @@ const PaymentVouchers: React.FC = () => {
     };
 
     if (itemToPrint) {
-        return <PrintableVoucher voucher={itemToPrint} logo={clinicLogo} stamp={clinicStamp} />;
+        return (
+            <div className="printable-area">
+                <PrintableVoucher voucher={itemToPrint} logo={clinicLogo} stamp={clinicStamp} />
+            </div>
+        );
     }
 
     return (
@@ -165,7 +168,7 @@ const PaymentVouchers: React.FC = () => {
                                 <td className="p-3 text-sm">{v.request_id}</td>
                                 <td className="p-3 text-sm">{v.date}</td>
                                 <td className="p-3 text-sm">{v.beneficiary}</td>
-                                <td className="p-3 text-sm">{v.amount} ريال</td>
+                                <td className="p-3 text-sm">{v.amount.toLocaleString()} ريال</td>
                                 <td className="p-3 text-sm">{v.payment_method}</td>
                                 <td className="p-3 text-sm">{v.notes || '-'}</td>
                                 <td className="p-3 text-sm">
@@ -181,8 +184,8 @@ const PaymentVouchers: React.FC = () => {
                                                 <button onClick={() => handleStatusUpdate(v, PaymentVoucherStatus.Rejected)} disabled={updatingStatus === v.request_id} className="p-2 text-red-600 hover:bg-red-100 rounded-full disabled:opacity-50" title="رفض"> <XCircleIcon className="h-5 w-5" /> </button>
                                             </>
                                         )}
-                                        <button onClick={() => setItemToPreview(v)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full"><EyeIcon className="h-5 w-5" /></button>
-                                        <button onClick={() => setItemToPrint(v)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full"><PrinterIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => setItemToPreview(v)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full" title="معاينة"><EyeIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => setItemToPrint(v)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full" title="طباعة"><PrinterIcon className="h-5 w-5" /></button>
                                     </div>
                                 </td>
                             </tr>
@@ -194,7 +197,9 @@ const PaymentVouchers: React.FC = () => {
             
             {itemToPreview && (
                 <Modal isOpen={!!itemToPreview} onClose={() => setItemToPreview(null)} title="معاينة سند الصرف">
-                    <PrintableVoucher voucher={itemToPreview} logo={clinicLogo} stamp={clinicStamp} />
+                    <div className="printable-area">
+                        <PrintableVoucher voucher={itemToPreview} logo={clinicLogo} stamp={clinicStamp} />
+                    </div>
                     <div className="mt-4 flex justify-end gap-2 no-print">
                         <button onClick={() => setItemToPreview(null)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">إغلاق</button>
                         <button onClick={() => { setItemToPrint(itemToPreview); setItemToPreview(null); }} className="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600">طباعة</button>

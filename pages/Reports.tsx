@@ -6,7 +6,7 @@ import StatCard from '../components/ui/StatCard';
 import { CurrencyDollarIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
 const Reports: React.FC = () => {
-    const { revenues, clinics, doctors, visits } = useApp();
+    const { revenues, clinics, doctors, visits, clinicLogo } = useApp();
     
     // Filters
     const [clinicFilter, setClinicFilter] = useState<string>('all');
@@ -102,66 +102,75 @@ const Reports: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <StatCard title="إجمالي الإيرادات" value={`${summaryStats.totalRevenue.toLocaleString()} ريال`} icon={CurrencyDollarIcon} color="bg-green-500" />
-                <StatCard title="إجمالي الزيارات المرتبطة" value={summaryStats.totalVisits} icon={UserGroupIcon} color="bg-blue-500" />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                    <h3 className="font-bold text-teal-800 dark:text-teal-300 mb-4">الإيرادات حسب العيادة</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={revenueByClinicChart}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip formatter={(value: number) => `${value.toLocaleString()} ريال`} />
-                            <Legend />
-                            <Bar dataKey="الإيرادات" fill="#14b8a6" />
-                        </BarChart>
-                    </ResponsiveContainer>
+            <div className="printable-area">
+                <header className="text-center mb-8 hidden print:block">
+                    {clinicLogo && <img src={clinicLogo} alt="Logo" className="h-20 mx-auto mb-4" />}
+                    <h2 className="text-3xl font-bold">تقرير الإيرادات</h2>
+                    <p className="text-lg text-gray-600">
+                        {startDate && endDate ? `للفترة من ${startDate} إلى ${endDate}` : 'لجميع الأوقات'}
+                    </p>
+                </header>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <StatCard title="إجمالي الإيرادات" value={`${summaryStats.totalRevenue.toLocaleString()} ريال`} icon={CurrencyDollarIcon} color="bg-green-500" />
+                    <StatCard title="إجمالي الزيارات المرتبطة" value={summaryStats.totalVisits} icon={UserGroupIcon} color="bg-blue-500" />
                 </div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                     <h3 className="font-bold text-teal-800 dark:text-teal-300 mb-4">الإيرادات عبر الزمن</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={revenueOverTimeChart}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" />
-                            <YAxis />
-                            <Tooltip formatter={(value: number) => `${value.toLocaleString()} ريال`} />
-                            <Legend />
-                            <Line type="monotone" dataKey="الإيرادات" stroke="#3b82f6" strokeWidth={2} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
 
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                <h3 className="font-bold text-teal-800 dark:text-teal-300 mb-4">تفاصيل الإيرادات</h3>
-                 <div className="overflow-x-auto">
-                    <table className="w-full text-right">
-                         <thead className="bg-gray-100 dark:bg-gray-700">
-                             <tr>
-                                 <th className="p-3">#</th>
-                                 <th className="p-3">التاريخ</th>
-                                 <th className="p-3">المريض</th>
-                                 <th className="p-3">العيادة</th>
-                                 <th className="p-3">المبلغ</th>
-                             </tr>
-                         </thead>
-                         <tbody>
-                            {filteredRevenues.map(r => (
-                                <tr key={r.revenue_id} className="border-b dark:border-gray-700">
-                                    <td className="p-3">{r.revenue_id}</td>
-                                    <td className="p-3">{r.date}</td>
-                                    <td className="p-3">{r.patient_name}</td>
-                                    <td className="p-3">{clinics.find(c => c.clinic_id === r.clinic_id)?.clinic_name || 'N/A'}</td>
-                                    <td className="p-3 font-bold">{r.amount}</td>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                        <h3 className="font-bold text-teal-800 dark:text-teal-300 mb-4">الإيرادات حسب العيادة</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={revenueByClinicChart}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" />
+                                <YAxis />
+                                <Tooltip formatter={(value: number) => `${value.toLocaleString()} ريال`} />
+                                <Legend />
+                                <Bar dataKey="الإيرادات" fill="#14b8a6" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                        <h3 className="font-bold text-teal-800 dark:text-teal-300 mb-4">الإيرادات عبر الزمن</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <LineChart data={revenueOverTimeChart}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="date" />
+                                <YAxis />
+                                <Tooltip formatter={(value: number) => `${value.toLocaleString()} ريال`} />
+                                <Legend />
+                                <Line type="monotone" dataKey="الإيرادات" stroke="#3b82f6" strokeWidth={2} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-6">
+                    <h3 className="font-bold text-teal-800 dark:text-teal-300 mb-4">تفاصيل الإيرادات</h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-right">
+                            <thead className="bg-gray-100 dark:bg-gray-700">
+                                <tr>
+                                    <th className="p-3">#</th>
+                                    <th className="p-3">التاريخ</th>
+                                    <th className="p-3">المريض</th>
+                                    <th className="p-3">العيادة</th>
+                                    <th className="p-3">المبلغ</th>
                                 </tr>
-                            ))}
-                         </tbody>
-                    </table>
-                 </div>
+                            </thead>
+                            <tbody>
+                                {filteredRevenues.map(r => (
+                                    <tr key={r.revenue_id} className="border-b dark:border-gray-700">
+                                        <td className="p-3">{r.revenue_id}</td>
+                                        <td className="p-3">{r.date}</td>
+                                        <td className="p-3">{r.patient_name}</td>
+                                        <td className="p-3">{clinics.find(c => c.clinic_id === r.clinic_id)?.clinic_name || 'N/A'}</td>
+                                        <td className="p-3 font-bold">{r.amount}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     );
