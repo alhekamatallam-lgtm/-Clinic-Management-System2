@@ -7,6 +7,7 @@ const Sidebar: React.FC = () => {
     const { user, currentView, setView, isSidebarOpen } = useApp();
     const [isReportsOpen, setIsReportsOpen] = useState(false);
     const [isFinancialsOpen, setIsFinancialsOpen] = useState(false);
+    const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
 
     useEffect(() => {
         const reportViews: View[] = ['reports', 'daily-clinic-report', 'medical-report', 'disbursements-report'];
@@ -17,15 +18,20 @@ const Sidebar: React.FC = () => {
         if (financialViews.includes(currentView)) {
             setIsFinancialsOpen(true);
         }
+        const controlPanelViews: View[] = ['clinics', 'doctors', 'settings', 'users'];
+        if (controlPanelViews.includes(currentView)) {
+            setIsControlPanelOpen(true);
+        }
     }, [currentView]);
 
     if (!user) return null;
 
     const navItems = [
-        { view: 'dashboard', label: 'لوحة التحكم', icon: PresentationChartLineIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
+        { view: 'dashboard', label: 'لوحة التحكم الرئيسية', icon: PresentationChartLineIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
         { view: 'queue', label: 'شاشة الانتظار', icon: QueueListIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant], color: 'text-amber-400' },
         { view: 'patients', label: 'المرضى', icon: UserGroupIcon, roles: [Role.Reception, Role.Manager, Role.Accountant] },
         { view: 'visits', label: 'الزيارات', icon: ClipboardDocumentListIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
+        { view: 'diagnosis', label: 'التشخيص', icon: BeakerIcon, roles: [Role.Doctor, Role.Manager] },
         {
             id: 'financials-group',
             label: 'الإدارة المالية',
@@ -37,7 +43,6 @@ const Sidebar: React.FC = () => {
                 { view: 'payment-vouchers', label: 'سندات الصرف', roles: [Role.Manager, Role.Accountant] },
             ]
         },
-        { view: 'diagnosis', label: 'التشخيص', icon: BeakerIcon, roles: [Role.Doctor, Role.Manager] },
         {
             id: 'reports-group',
             label: 'التقارير',
@@ -50,12 +55,20 @@ const Sidebar: React.FC = () => {
                 { view: 'medical-report', label: 'التقارير الطبية', roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
             ]
         },
-        { view: 'users', label: 'المستخدمين', icon: UsersIcon, roles: [Role.Manager] },
-        { view: 'clinics', label: 'العيادات', icon: BuildingOffice2Icon, roles: [Role.Manager] },
-        { view: 'doctors', label: 'الأطباء', icon: HeartIcon, roles: [Role.Manager] },
         { view: 'documentation', label: 'الوثائق', icon: BookOpenIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant] },
         { view: 'optimization', label: 'تحسينات واقتراحات', icon: LightBulbIcon, roles: [Role.Reception, Role.Doctor, Role.Manager, Role.Accountant], color: 'text-orange-400' },
-        { view: 'settings', label: 'الإعدادات', icon: Cog6ToothIcon, roles: [Role.Manager] },
+        {
+            id: 'control-panel-group',
+            label: 'لوحة التحكم',
+            icon: Cog6ToothIcon,
+            roles: [Role.Manager],
+            subItems: [
+                { view: 'users', label: 'المستخدمين', roles: [Role.Manager] },
+                { view: 'clinics', label: 'العيادات', roles: [Role.Manager] },
+                { view: 'doctors', label: 'الأطباء', roles: [Role.Manager] },
+                { view: 'settings', label: 'الإعدادات', roles: [Role.Manager] },
+            ]
+        },
     ];
 
     const filteredNavItems = navItems.filter(item => item.roles.includes(user.role));
@@ -72,14 +85,17 @@ const Sidebar: React.FC = () => {
             <nav className="flex-1 overflow-y-auto pb-4 min-h-0">
                 <ul className="space-y-2">
                     {filteredNavItems.map(item => {
-                        // Group with sub-items (Reports or Financials)
+                        // Group with sub-items
                         if ('subItems' in item && item.subItems) {
                             const isGroupActive = item.subItems.some(sub => sub.view === currentView);
-                            const isOpen = item.id === 'reports-group' ? isReportsOpen : item.id === 'financials-group' ? isFinancialsOpen : false;
+                            const isOpen = item.id === 'reports-group' ? isReportsOpen :
+                                           item.id === 'financials-group' ? isFinancialsOpen :
+                                           item.id === 'control-panel-group' ? isControlPanelOpen : false;
 
                             const toggleOpen = () => {
                                 if (item.id === 'reports-group') setIsReportsOpen(prev => !prev);
                                 if (item.id === 'financials-group') setIsFinancialsOpen(prev => !prev);
+                                if (item.id === 'control-panel-group') setIsControlPanelOpen(prev => !prev);
                             };
 
                             return (

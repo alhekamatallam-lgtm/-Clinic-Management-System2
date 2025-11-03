@@ -152,8 +152,8 @@ const Clinics: React.FC = () => {
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{clinic.clinic_name}</td>
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{getDoctorName(clinic.doctor_id)}</td>
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{clinic.shift}</td>
-                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{clinic.price_first_visit} ريال</td>
-                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{clinic.price_followup} ريال</td>
+                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{clinic.price_first_visit} جنيه</td>
+                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{clinic.price_followup} جنيه</td>
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{clinic.notes}</td>
                                 {isManager && (
                                     <td className="p-3 text-sm flex items-center gap-2">

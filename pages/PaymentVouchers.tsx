@@ -38,7 +38,7 @@ const PrintableVoucher: React.FC<{ voucher: PaymentVoucher; logo: string | null;
                 <p><strong>رقم السند:</strong> {voucher.voucher_id}</p>
                 <p><strong>رقم الطلب:</strong> {voucher.request_id}</p>
                 <p><strong>التاريخ:</strong> {voucher.date}</p>
-                <p><strong>المبلغ:</strong> {voucher.amount.toLocaleString()} ريال</p>
+                <p><strong>المبلغ:</strong> {voucher.amount.toLocaleString()} جنيه</p>
                 <p className="col-span-2"><strong>المستفيد:</strong> {voucher.beneficiary}</p>
                 <p className="col-span-2"><strong>مقابل / الغرض من الصرف:</strong> {voucher.purpose}</p>
                 <p><strong>طريقة الصرف:</strong> {voucher.payment_method}</p>
@@ -168,7 +168,7 @@ const PaymentVouchers: React.FC = () => {
                                 <td className="p-3 text-sm">{v.request_id}</td>
                                 <td className="p-3 text-sm">{v.date}</td>
                                 <td className="p-3 text-sm">{v.beneficiary}</td>
-                                <td className="p-3 text-sm">{v.amount.toLocaleString()} ريال</td>
+                                <td className="p-3 text-sm">{v.amount.toLocaleString()} جنيه</td>
                                 <td className="p-3 text-sm">{v.payment_method}</td>
                                 <td className="p-3 text-sm">{v.notes || '-'}</td>
                                 <td className="p-3 text-sm">

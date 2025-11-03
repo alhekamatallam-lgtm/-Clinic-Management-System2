@@ -172,7 +172,7 @@ const DoctorDashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 <StatCard title="إجمالي مرضى اليوم" value={myVisitsToday.length} icon={UserGroupIcon} color="bg-blue-500" />
                 <StatCard title="المرضى المتبقين" value={waitingVisits.length} icon={UserGroupIcon} color="bg-yellow-500" />
-                <StatCard title="إيرادات اليوم" value={`${todaysRevenue} ريال`} icon={CurrencyDollarIcon} color="bg-indigo-500" />
+                <StatCard title="إيرادات اليوم" value={`${todaysRevenue} جنيه`} icon={CurrencyDollarIcon} color="bg-indigo-500" />
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">

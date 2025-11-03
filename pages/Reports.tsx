@@ -111,7 +111,7 @@ const Reports: React.FC = () => {
                     </p>
                 </header>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <StatCard title="إجمالي الإيرادات" value={`${summaryStats.totalRevenue.toLocaleString()} ريال`} icon={CurrencyDollarIcon} color="bg-green-500" />
+                    <StatCard title="إجمالي الإيرادات" value={`${summaryStats.totalRevenue.toLocaleString()} جنيه`} icon={CurrencyDollarIcon} color="bg-green-500" />
                     <StatCard title="إجمالي الزيارات المرتبطة" value={summaryStats.totalVisits} icon={UserGroupIcon} color="bg-blue-500" />
                 </div>
 
@@ -123,7 +123,7 @@ const Reports: React.FC = () => {
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="name" />
                                 <YAxis />
-                                <Tooltip formatter={(value: number) => `${value.toLocaleString()} ريال`} />
+                                <Tooltip formatter={(value: number) => `${value.toLocaleString()} جنيه`} />
                                 <Legend />
                                 <Bar dataKey="الإيرادات" fill="#14b8a6" />
                             </BarChart>
@@ -136,7 +136,7 @@ const Reports: React.FC = () => {
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="date" />
                                 <YAxis />
-                                <Tooltip formatter={(value: number) => `${value.toLocaleString()} ريال`} />
+                                <Tooltip formatter={(value: number) => `${value.toLocaleString()} جنيه`} />
                                 <Legend />
                                 <Line type="monotone" dataKey="الإيرادات" stroke="#3b82f6" strokeWidth={2} />
                             </LineChart>

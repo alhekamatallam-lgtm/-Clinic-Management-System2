@@ -13,9 +13,9 @@ const getLocalYYYYMMDD = (date: Date): string => {
 };
 
 const ManagerDashboard: React.FC = () => {
-    const { visits, clinics, revenues } = useApp();
+    const { visits, clinics, revenues, disbursements } = useApp();
     
-    const { dailyRevenue, thisWeekRevenue, thisMonthRevenue, totalRevenue } = useMemo(() => {
+    const { dailyRevenue, thisWeekRevenue, thisMonthRevenue, totalRevenue, dailyDisbursements } = useMemo(() => {
         const today = new Date();
         const currentDayOfWeek = today.getDay(); // Sunday = 0
         const currentMonth = today.getMonth();
@@ -61,14 +61,19 @@ const ManagerDashboard: React.FC = () => {
                 monthly += r.amount;
             }
         });
+        
+        const disbursementsToday = disbursements
+            .filter(d => d.date === todayStr)
+            .reduce((sum, d) => sum + d.amount, 0);
     
         return { 
             dailyRevenue: daily, 
             thisWeekRevenue: weekly, 
             thisMonthRevenue: monthly,
-            totalRevenue: total 
+            totalRevenue: total,
+            dailyDisbursements: disbursementsToday
         };
-    }, [revenues]);
+    }, [revenues, disbursements]);
 
     
     const revenueByClinic = clinics.map(clinic => {
@@ -101,11 +106,12 @@ const ManagerDashboard: React.FC = () => {
 
     return (
         <div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <StatCard title="إيرادات اليوم" value={`${dailyRevenue} ريال`} icon={CurrencyDollarIcon} color="bg-green-500" />
-                <StatCard title="إيرادات هذا الأسبوع" value={`${thisWeekRevenue} ريال`} icon={CalendarDaysIcon} color="bg-blue-500" />
-                <StatCard title="إيرادات هذا الشهر" value={`${thisMonthRevenue} ريال`} icon={BanknotesIcon} color="bg-indigo-500" />
-                <StatCard title="إجمالي الإيرادات" value={`${totalRevenue} ريال`} icon={CurrencyDollarIcon} color="bg-purple-500" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <StatCard title="إيرادات اليوم" value={`${dailyRevenue} جنيه`} icon={CurrencyDollarIcon} color="bg-green-500" />
+                <StatCard title="مصروفات اليوم" value={`${dailyDisbursements} جنيه`} icon={BanknotesIcon} color="bg-red-500" />
+                <StatCard title="إيرادات هذا الأسبوع" value={`${thisWeekRevenue} جنيه`} icon={CalendarDaysIcon} color="bg-blue-500" />
+                <StatCard title="إيرادات هذا الشهر" value={`${thisMonthRevenue} جنيه`} icon={BanknotesIcon} color="bg-indigo-500" />
+                <StatCard title="إجمالي الإيرادات" value={`${totalRevenue} جنيه`} icon={CurrencyDollarIcon} color="bg-purple-500" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -116,7 +122,7 @@ const ManagerDashboard: React.FC = () => {
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="name" />
                             <YAxis />
-                            <Tooltip formatter={(value) => `${value} ريال`} />
+                            <Tooltip formatter={(value) => `${value} جنيه`} />
                             <Legend />
                             <Bar dataKey="الإيرادات" fill="#14b8a6" />
                         </BarChart>

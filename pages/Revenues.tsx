@@ -335,7 +335,7 @@ const Revenues: React.FC = () => {
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{revenue.patient_name}</td>
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{getClinicName(revenue.clinic_id)}</td>
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{getDoctorNameForClinic(revenue.clinic_id)}</td>
-                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300 font-bold">{revenue.amount} ريال</td>
+                                <td className="p-3 text-sm text-gray-700 dark:text-gray-300 font-bold">{revenue.amount} جنيه</td>
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{revenue.date}</td>
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{revenue.type}</td>
                                 <td className="p-3 text-sm text-gray-700 dark:text-gray-300">{revenue.notes}</td>
@@ -357,7 +357,7 @@ const Revenues: React.FC = () => {
                                 <p className="text-sm text-gray-500 dark:text-gray-400">{revenue.date}</p>
                             </div>
                             <div className="text-left flex-shrink-0 pl-2">
-                                <p className="text-xl font-bold text-teal-600 dark:text-teal-400">{revenue.amount} ريال</p>
+                                <p className="text-xl font-bold text-teal-600 dark:text-teal-400">{revenue.amount} جنيه</p>
                                 <p className="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded-full text-gray-600 dark:text-gray-300 inline-block mt-1">{revenue.type}</p>
                             </div>
                         </div>

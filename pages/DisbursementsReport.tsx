@@ -74,7 +74,7 @@ const DisbursementsReport: React.FC = () => {
 
                 <div className="bg-teal-50 dark:bg-teal-900/50 p-4 rounded-lg mb-6 text-center">
                     <h2 className="text-lg font-semibold text-teal-800 dark:text-teal-300">إجمالي المصروفات للفترة المحددة</h2>
-                    <p className="text-3xl font-bold text-teal-600 dark:text-teal-400">{totalAmount.toLocaleString()} ريال</p>
+                    <p className="text-3xl font-bold text-teal-600 dark:text-teal-400">{totalAmount.toLocaleString()} جنيه</p>
                 </div>
 
                 <div className="overflow-x-auto">

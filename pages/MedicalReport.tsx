@@ -194,7 +194,7 @@ const MedicalReport: React.FC = () => {
                 </div>
 
                 {/* This is the printable component */}
-                <div className="printable-medical-report font-serif bg-white text-black p-8 md:p-12 rounded-lg shadow-lg border border-gray-200 max-w-4xl mx-auto">
+                <div className="printable-area font-serif bg-white text-black p-8 md:p-12 max-w-4xl mx-auto">
                     {/* Header */}
                     <header className="flex justify-between items-center border-b-2 border-gray-800 pb-4 mb-8">
                         <div>

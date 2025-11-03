@@ -115,7 +115,7 @@ const AiAssistant: React.FC = () => {
         if (pendingDisbursements.length > 0) {
             context += '\nطلبات الصرف المعلقة (بانتظار موافقة المدير):\n';
             pendingDisbursements.forEach(d => {
-                context += `- رقم ${d.disbursement_id}: ${d.amount} ريال لـ ${d.beneficiary} (${d.purpose})\n`;
+                context += `- رقم ${d.disbursement_id}: ${d.amount} جنيه لـ ${d.beneficiary} (${d.purpose})\n`;
             });
         }
 
@@ -123,7 +123,7 @@ const AiAssistant: React.FC = () => {
         if (approvedForVoucher.length > 0) {
             context += '\nطلبات معتمدة بانتظار إنشاء سند صرف (من المحاسب):\n';
             approvedForVoucher.forEach(d => {
-                context += `- رقم ${d.disbursement_id}: ${d.amount} ريال لـ ${d.beneficiary}\n`;
+                context += `- رقم ${d.disbursement_id}: ${d.amount} جنيه لـ ${d.beneficiary}\n`;
             });
         }
         
@@ -131,7 +131,7 @@ const AiAssistant: React.FC = () => {
         if (pendingVouchers.length > 0) {
             context += '\nسندات صرف معلقة (بانتظار موافقة المدير):\n';
             pendingVouchers.forEach(v => {
-                context += `- سند متعلق بالطلب رقم ${v.request_id}: ${v.amount} ريال لـ ${v.beneficiary}\n`;
+                context += `- سند متعلق بالطلب رقم ${v.request_id}: ${v.amount} جنيه لـ ${v.beneficiary}\n`;
             });
         }
 

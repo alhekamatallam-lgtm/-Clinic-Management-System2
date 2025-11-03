@@ -95,7 +95,7 @@ const DailyClinicReport: React.FC = () => {
                                     <td className="p-3 border border-gray-300 dark:border-gray-600">{report.firstVisits}</td>
                                     <td className="p-3 border border-gray-300 dark:border-gray-600">{report.followUpVisits}</td>
                                     <td className="p-3 border border-gray-300 dark:border-gray-600 font-bold">{report.totalVisits}</td>
-                                    <td className="p-3 border border-gray-300 dark:border-gray-600 font-bold">{report.totalRevenue.toLocaleString()} ريال</td>
+                                    <td className="p-3 border border-gray-300 dark:border-gray-600 font-bold">{report.totalRevenue.toLocaleString()} جنيه</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -103,7 +103,7 @@ const DailyClinicReport: React.FC = () => {
                             <tr>
                                 <td colSpan={4} className="p-3 border border-gray-300 dark:border-gray-600 text-center">الإجمالي العام</td>
                                 <td className="p-3 border border-gray-300 dark:border-gray-600">{reportData.overallTotalVisits}</td>
-                                <td className="p-3 border border-gray-300 dark:border-gray-600">{reportData.overallTotalRevenue.toLocaleString()} ريال</td>
+                                <td className="p-3 border border-gray-300 dark:border-gray-600">{reportData.overallTotalRevenue.toLocaleString()} جنيه</td>
                             </tr>
                         </tfoot>
                     </table>

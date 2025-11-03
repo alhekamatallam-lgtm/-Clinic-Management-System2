@@ -50,7 +50,7 @@ const PrintableDisbursement: React.FC<{ disbursement: Disbursement; logo: string
                 <p><strong>رقم الطلب:</strong> {disbursement.disbursement_id}</p>
                 <p><strong>التاريخ:</strong> {disbursement.date}</p>
                 <p><strong>المستفيد:</strong> {disbursement.beneficiary}</p>
-                <p><strong>المبلغ:</strong> {disbursement.amount.toLocaleString()} ريال</p>
+                <p><strong>المبلغ:</strong> {disbursement.amount.toLocaleString()} جنيه</p>
                 <p className="col-span-2"><strong>الغرض من الصرف:</strong> {disbursement.purpose}</p>
                 <p className="col-span-2"><strong>الحالة:</strong> {translateDisbursementStatus(disbursement.status)}</p>
             </div>
@@ -238,7 +238,7 @@ const Disbursements: React.FC = () => {
                                 <td className="p-3 text-sm">{d.disbursement_id}</td>
                                 <td className="p-3 text-sm">{d.date}</td>
                                 <td className="p-3 text-sm">{d.beneficiary}</td>
-                                <td className="p-3 text-sm">{d.amount.toLocaleString()} ريال</td>
+                                <td className="p-3 text-sm">{d.amount.toLocaleString()} جنيه</td>
                                 <td className="p-3 text-sm">{d.purpose}</td>
                                 <td className="p-3 text-sm"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(d.status)}`}>{translateDisbursementStatus(d.status)}</span></td>
                                 <td className="p-3">{renderActions(d)}</td>
@@ -306,7 +306,7 @@ const Disbursements: React.FC = () => {
             <Modal title={`إنشاء سند صرف للطلب #${selectedDisbursement?.disbursement_id}`} isOpen={isVoucherModalOpen} onClose={handleCloseModals}>
                  <form onSubmit={handleVoucherSubmit} className="space-y-4">
                     <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                        <p><strong>المبلغ:</strong> {selectedDisbursement?.amount} ريال</p>
+                        <p><strong>المبلغ:</strong> {selectedDisbursement?.amount} جنيه</p>
                         <p><strong>المستفيد:</strong> {selectedDisbursement?.beneficiary}</p>
                     </div>
                     <select name="payment_method" value={voucherFormData.payment_method} onChange={handleVoucherChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white bg-white">
