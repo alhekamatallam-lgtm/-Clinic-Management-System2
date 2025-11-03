@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { PaymentVoucher, PaymentVoucherStatus, Role } from '../types';
 import { ChevronRightIcon, ChevronLeftIcon, CheckBadgeIcon, ClockIcon, XCircleIcon, PrinterIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/solid';
@@ -9,6 +9,11 @@ const PaymentVouchers: React.FC = () => {
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [printingVoucher, setPrintingVoucher] = useState<PaymentVoucher | null>(null);
 
+    useEffect(() => {
+        if (printingVoucher) {
+            window.print();
+        }
+    }, [printingVoucher]);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -51,7 +56,6 @@ const PaymentVouchers: React.FC = () => {
     
     const handlePrintVoucher = (voucher: PaymentVoucher) => {
         setPrintingVoucher(voucher);
-        setTimeout(() => window.print(), 100);
     };
     
     const getStatusChip = (status: PaymentVoucherStatus) => {

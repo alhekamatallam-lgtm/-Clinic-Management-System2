@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Disbursement, DisbursementStatus, DisbursementType, Role, PaymentVoucherStatus, PaymentMethod } from '../types';
 import Modal from '../components/ui/Modal';
@@ -20,6 +20,12 @@ const Disbursements: React.FC = () => {
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [printingRequest, setPrintingRequest] = useState<Disbursement | null>(null);
     const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+
+    useEffect(() => {
+        if (printingRequest) {
+            window.print();
+        }
+    }, [printingRequest]);
 
     const today = getLocalYYYYMMDD(new Date());
 
@@ -52,9 +58,23 @@ const Disbursements: React.FC = () => {
     [disbursements]);
     
     const pendingApproval = useMemo(() => sortedDisbursements.filter(d => d.status === DisbursementStatus.Pending), [sortedDisbursements]);
-    const pendingVoucher = useMemo(() => sortedDisbursements.filter(d => d.status === DisbursementStatus.Approved && !paymentVouchers.some(v => v.request_id === d.disbursement_id)), [sortedDisbursements, paymentVouchers]);
-    const archiveDisbursements = useMemo(() => sortedDisbursements.filter(d => !pendingApproval.includes(d) && !pendingVoucher.includes(d)), [sortedDisbursements, pendingApproval, pendingVoucher]);
+    
+    const pendingVoucherCreation = useMemo(() => sortedDisbursements.filter(d => d.status === DisbursementStatus.Approved && !paymentVouchers.some(v => v.request_id === d.disbursement_id)), [sortedDisbursements, paymentVouchers]);
 
+    const pendingVoucherApproval = useMemo(() => sortedDisbursements.filter(d => {
+        const voucher = paymentVouchers.find(v => v.request_id === d.disbursement_id);
+        return d.status === DisbursementStatus.Approved && voucher && voucher.status === PaymentVoucherStatus.Pending;
+    }), [sortedDisbursements, paymentVouchers]);
+
+    const archiveDisbursements = useMemo(() => sortedDisbursements.filter(d => {
+        if (d.status === DisbursementStatus.Pending) return false; // Handled by pendingApproval
+        if (d.status === DisbursementStatus.Approved) {
+            const voucher = paymentVouchers.find(v => v.request_id === d.disbursement_id);
+            if (!voucher) return false; // Handled by pendingVoucherCreation
+            if (voucher.status === PaymentVoucherStatus.Pending) return false; // Handled by pendingVoucherApproval
+        }
+        return true; // Is Rejected, or has an Approved/Rejected voucher.
+    }), [sortedDisbursements, paymentVouchers]);
     
     // Pagination for archive
     const totalPages = Math.ceil(archiveDisbursements.length / itemsPerPage);
@@ -134,7 +154,6 @@ const Disbursements: React.FC = () => {
     
     const handlePrintRequest = (request: Disbursement) => {
         setPrintingRequest(request);
-        setTimeout(() => window.print(), 100);
     };
     
     const PaginationControls = () => {
@@ -233,7 +252,7 @@ const Disbursements: React.FC = () => {
         </div>
     );
     
-    const renderTable = (title: string, data: Disbursement[], isPendingApproval?: boolean, isPendingVoucher?: boolean) => (
+    const renderTableSection = (title: string, data: Disbursement[], actions?: { type: 'approval' | 'voucher' }) => (
         <div className="mb-8">
             <h2 className="text-lg font-bold text-gray-600 dark:text-gray-400 mb-2">{title} ({data.length})</h2>
             <div className="overflow-x-auto border rounded-lg dark:border-gray-700">
@@ -258,7 +277,7 @@ const Disbursements: React.FC = () => {
                                     <div className="flex items-center gap-2">
                                         {updatingId === item.disbursement_id ? <ActionSpinner /> : (
                                             <>
-                                                {isPendingApproval && user?.role === Role.Manager && (
+                                                {actions?.type === 'approval' && user?.role === Role.Manager && (
                                                     <>
                                                         <button onClick={() => handleApproveRequest(item)} className="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600 flex items-center">
                                                             <CheckBadgeIcon className="h-4 w-4 ml-1" /> اعتماد
@@ -268,7 +287,7 @@ const Disbursements: React.FC = () => {
                                                         </button>
                                                     </>
                                                 )}
-                                                {isPendingVoucher && user?.role === Role.Accountant && (
+                                                {actions?.type === 'voucher' && user?.role === Role.Accountant && (
                                                     <button onClick={() => handleOpenVoucherModal(item)} className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 flex items-center">
                                                         <DocumentPlusIcon className="h-4 w-4 ml-1" /> إنشاء سند
                                                     </button>
@@ -305,8 +324,9 @@ const Disbursements: React.FC = () => {
                 </button>
             </div>
             
-            {pendingApproval.length > 0 && renderTable('طلبات بانتظار الاعتماد', pendingApproval, true, false)}
-            {pendingVoucher.length > 0 && renderTable('طلبات بانتظار الصرف', pendingVoucher, false, true)}
+            {pendingApproval.length > 0 && renderTableSection('طلبات بانتظار الاعتماد', pendingApproval, { type: 'approval' })}
+            {pendingVoucherCreation.length > 0 && renderTableSection('طلبات بانتظار إنشاء سند', pendingVoucherCreation, { type: 'voucher' })}
+            {pendingVoucherApproval.length > 0 && renderTableSection('طلبات بانتظار اعتماد السند', pendingVoucherApproval)}
             
             {archiveDisbursements.length > 0 && (
                 <div className="mt-8">
@@ -321,15 +341,26 @@ const Disbursements: React.FC = () => {
                         <div className="space-y-2">
                              {currentArchivedDisbursements.map(item => {
                                  const voucher = paymentVouchers.find(v => v.request_id === item.disbursement_id);
-                                 let statusText = 'مرفوض';
-                                 let statusColor: 'red' | 'green' = 'red';
-                                 if (voucher) {
-                                     statusText = voucher.status === PaymentVoucherStatus.Approved ? 'مكتمل' : 'السند مرفوض';
-                                     if(voucher.status === PaymentVoucherStatus.Approved) statusColor = 'green';
-                                 } else if (item.status === DisbursementStatus.Approved) {
-                                      statusText = 'خطأ: معتمد بدون سند';
-                                      statusColor = 'red';
+                                 let statusText: string;
+                                 let statusColor: 'red' | 'green';
+                                 
+                                 if (item.status === DisbursementStatus.Rejected) {
+                                     statusText = 'الطلب مرفوض';
+                                     statusColor = 'red';
+                                 } else if (voucher) {
+                                     if (voucher.status === PaymentVoucherStatus.Approved) {
+                                         statusText = 'مكتمل';
+                                         statusColor = 'green';
+                                     } else { // Voucher is Rejected
+                                         statusText = 'السند مرفوض';
+                                         statusColor = 'red';
+                                     }
+                                 } else {
+                                     // This state shouldn't appear in archive anymore, but as a fallback
+                                     statusText = 'حالة غير معروفة';
+                                     statusColor = 'red';
                                  }
+
                                  return (
                                     <div key={item.disbursement_id} className="p-3 border rounded-lg flex justify-between items-center dark:border-gray-700">
                                         <div>
