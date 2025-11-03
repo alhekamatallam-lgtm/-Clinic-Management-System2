@@ -64,7 +64,7 @@ const Sidebar: React.FC = () => {
     const desktopWidth = isSidebarOpen ? 'lg:w-64' : 'lg:w-20';
 
     return (
-        <div className={`fixed lg:static inset-y-0 right-0 z-30 bg-teal-800 text-white flex flex-col p-4 space-y-4 w-64 transform lg:transform-none transition-all duration-300 ease-in-out ${mobileTransform} ${desktopWidth}`}>
+        <div className={`fixed lg:static inset-y-0 right-0 z-30 bg-teal-800 text-white flex flex-col p-4 space-y-4 w-64 transform lg:transform-none transition-all duration-300 ease-in-out no-print ${mobileTransform} ${desktopWidth}`}>
             <div className="flex items-center justify-center py-4 border-b border-teal-700 overflow-hidden">
                 <ChartBarIcon className="h-8 w-8 text-teal-300 flex-shrink-0"/>
                 {isSidebarOpen && <h1 className="text-xl font-bold ml-2 text-center whitespace-nowrap">مستوصف الراجحي</h1>}

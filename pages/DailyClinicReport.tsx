@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { PrinterIcon } from '@heroicons/react/24/solid';
 import { Role } from '../types';
 
-// Helper to get 'YYYY-MM-DD' from a Date object, respecting local timezone.
 const getLocalYYYYMMDD = (date: Date): string => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -14,12 +13,20 @@ const getLocalYYYYMMDD = (date: Date): string => {
 const DailyClinicReport: React.FC = () => {
     const { clinics, visits, revenues, user, doctors, clinicLogo } = useApp();
     const [selectedDate, setSelectedDate] = useState<string>(getLocalYYYYMMDD(new Date()));
+    const [isPrinting, setIsPrinting] = useState(false);
+
+    useEffect(() => {
+        if (isPrinting) {
+            const handleAfterPrint = () => setIsPrinting(false);
+            window.addEventListener('afterprint', handleAfterPrint);
+            window.print();
+            return () => window.removeEventListener('afterprint', handleAfterPrint);
+        }
+    }, [isPrinting]);
 
     const reportData = useMemo(() => {
         const dailyVisits = visits.filter(v => v.visit_date === selectedDate);
         const dailyRevenues = revenues.filter(r => r.date === selectedDate);
-
-        // Filter clinics based on user role. Doctors see only clinics they are assigned to.
         const clinicsToReport = (user?.role === Role.Doctor && user.doctor_id)
             ? clinics.filter(c => c.doctor_id === user.doctor_id)
             : clinics;
@@ -27,9 +34,7 @@ const DailyClinicReport: React.FC = () => {
         return clinicsToReport.map(clinic => {
             const clinicVisits = dailyVisits.filter(v => v.clinic_id === clinic.clinic_id);
             const clinicRevenues = dailyRevenues.filter(r => r.clinic_id === clinic.clinic_id);
-
             const totalRevenue = clinicRevenues.reduce((sum, r) => sum + r.amount, 0);
-            
             const doctor = doctors.find(d => d.doctor_id === clinic.doctor_id);
 
             return {
@@ -49,11 +54,54 @@ const DailyClinicReport: React.FC = () => {
     }, [reportData]);
 
     const handlePrint = () => {
-        window.print();
+        setIsPrinting(true);
     };
 
+    const PrintableContent = () => (
+        <div className="bg-white text-black p-6">
+            <div className="text-center mb-6">
+                 {clinicLogo && <img src={clinicLogo} alt="شعار المستوصف" className="h-20 w-auto mx-auto mb-4 object-contain" />}
+                 <h1 className="text-2xl font-bold text-black">تقرير العيادات اليومي</h1>
+                 <p className="text-lg text-gray-700">لتاريخ: {selectedDate}</p>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full text-right">
+                    <thead className="bg-gray-100">
+                        <tr>
+                            <th className="p-3 text-sm font-semibold tracking-wide">العيادة</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide">الطبيب</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide">عدد الحالات</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide">إجمالي الإيراد</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                        {reportData.map(data => (
+                            <tr key={data.clinicId}>
+                                <td className="p-3 text-sm font-medium">{data.clinicName}</td>
+                                <td className="p-3 text-sm">{data.doctorName}</td>
+                                <td className="p-3 text-sm">{data.caseCount}</td>
+                                <td className="p-3 text-sm font-bold">{data.totalRevenue.toFixed(2)} ريال</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    <tfoot className="bg-gray-100">
+                        <tr>
+                            <td colSpan={2} className="p-3 text-sm font-bold text-left">الإجمالي</td>
+                            <td className="p-3 text-sm font-bold text-teal-700">{grandTotals.totalCases}</td>
+                            <td className="p-3 text-sm font-bold text-teal-700">{grandTotals.totalRevenue.toFixed(2)} ريال</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    );
+    
+    if (isPrinting) {
+        return <PrintableContent />;
+    }
+
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md printable-area">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 no-print">
                 <h1 className="text-2xl font-bold text-teal-800 dark:text-teal-300">تقرير العيادات اليومي</h1>
                 <div className="flex items-center gap-4">
@@ -72,12 +120,7 @@ const DailyClinicReport: React.FC = () => {
                     </button>
                 </div>
             </div>
-            <div className="hidden print:block text-center mb-6">
-                 {clinicLogo && <img src={clinicLogo} alt="شعار المستوصف" className="h-20 w-auto mx-auto mb-4 object-contain" />}
-                 <h1 className="text-2xl font-bold text-black">تقرير العيادات اليومي</h1>
-                 <p className="text-lg text-gray-700">لتاريخ: {selectedDate}</p>
-            </div>
-
+            
             <div className="overflow-x-auto">
                 <table className="w-full text-right">
                     <thead className="bg-gray-100 dark:bg-gray-700">

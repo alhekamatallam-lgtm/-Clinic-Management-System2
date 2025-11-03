@@ -17,7 +17,7 @@ const Header: React.FC = () => {
   }
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 bg-white border-b-2 border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700">
+    <header className="flex items-center justify-between px-6 py-4 bg-white border-b-2 border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700 no-print">
         <div className="flex items-center">
             <button
                 onClick={toggleSidebar}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { FunnelIcon, XMarkIcon, PrinterIcon, ChevronRightIcon, ChevronLeftIcon } from '@heroicons/react/24/solid';
 import { DisbursementStatus, DisbursementType } from '../types';
@@ -6,6 +6,7 @@ import { DisbursementStatus, DisbursementType } from '../types';
 const DisbursementsReport: React.FC = () => {
     const { disbursements, clinicLogo } = useApp();
     
+    const [isPrinting, setIsPrinting] = useState(false);
     const [beneficiaryFilter, setBeneficiaryFilter] = useState<string>('');
     const [typeFilter, setTypeFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -14,6 +15,15 @@ const DisbursementsReport: React.FC = () => {
     
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+
+    useEffect(() => {
+        if (isPrinting) {
+            const handleAfterPrint = () => setIsPrinting(false);
+            window.addEventListener('afterprint', handleAfterPrint);
+            window.print();
+            return () => window.removeEventListener('afterprint', handleAfterPrint);
+        }
+    }, [isPrinting]);
     
     const filteredDisbursements = useMemo(() => {
         let tempDisbursements = [...disbursements];
@@ -67,7 +77,7 @@ const DisbursementsReport: React.FC = () => {
     };
     
     const handlePrint = () => {
-        window.print();
+        setIsPrinting(true);
     };
 
     const PaginationControls = () => {
@@ -91,9 +101,57 @@ const DisbursementsReport: React.FC = () => {
             </div>
         );
     };
+    
+    const PrintableContent = () => (
+        <div className="bg-white text-black p-6">
+            <div className="text-center mb-6">
+                {clinicLogo && <img src={clinicLogo} alt="شعار المستوصف" className="h-20 w-auto mx-auto mb-4 object-contain" />}
+                <h1 className="text-2xl font-bold text-black">تقرير المصروفات</h1>
+                {(startDate || endDate) && <p className="text-lg text-gray-700">للفترة من {startDate || '...'} إلى {endDate || '...'}</p>}
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full text-right">
+                    <thead className="bg-gray-100">
+                        <tr>
+                            <th className="p-3 text-sm font-semibold tracking-wide">#</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide">التاريخ</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide">المستفيد</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide">الغرض</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide">النوع</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide">الحالة</th>
+                            <th className="p-3 text-sm font-semibold tracking-wide">المبلغ</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                        {filteredDisbursements.map(d => (
+                            <tr key={d.disbursement_id}>
+                                <td className="p-3 text-sm">{d.disbursement_id}</td>
+                                <td className="p-3 text-sm">{d.date}</td>
+                                <td className="p-3 text-sm">{d.beneficiary}</td>
+                                <td className="p-3 text-sm">{d.purpose}</td>
+                                <td className="p-3 text-sm">{d.disbursement_type}</td>
+                                <td className="p-3 text-sm">{d.status}</td>
+                                <td className="p-3 text-sm font-bold">{d.amount.toFixed(2)} ريال</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    <tfoot className="bg-gray-100">
+                        <tr>
+                            <td colSpan={6} className="p-3 text-sm font-bold text-left">الإجمالي</td>
+                            <td className="p-3 text-sm font-bold text-teal-700 text-right">{totalFilteredAmount.toFixed(2)} ريال</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    );
+    
+    if (isPrinting) {
+        return <PrintableContent />;
+    }
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md printable-area">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
             <div className="flex justify-between items-center mb-6 no-print">
                 <h1 className="text-2xl font-bold text-teal-800 dark:text-teal-300">تقرير المصروفات</h1>
                 <button onClick={handlePrint} className="flex items-center bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
@@ -101,11 +159,6 @@ const DisbursementsReport: React.FC = () => {
                     طباعة
                 </button>
             </div>
-             <div className="hidden print:block text-center mb-6">
-                {clinicLogo && <img src={clinicLogo} alt="شعار المستوصف" className="h-20 w-auto mx-auto mb-4 object-contain" />}
-                <h1 className="text-2xl font-bold text-black">تقرير المصروفات</h1>
-                {(startDate || endDate) && <p className="text-lg text-gray-700">للفترة من {startDate || '...'} إلى {endDate || '...'}</p>}
-             </div>
             
             <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg mb-6 flex flex-wrap items-center gap-4 no-print">
                 <div className="flex items-center text-gray-600 dark:text-gray-300 font-semibold">
